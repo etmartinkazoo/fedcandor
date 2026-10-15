@@ -204,7 +204,7 @@ Scope {
                             required property var modelData
                             required property int index
                             width: (col.width - Theme.spacingMedium * 2) / 3
-                            height: 52
+                            height: 60
                             iconSize: 15
                             icon: modelData.icon
                             label: modelData.label + " [" + (index + 1) + "]"
@@ -227,7 +227,7 @@ Scope {
                         required property int index
                         readonly property bool armed: sys.armedIndex === index
                         width: (col.width - Theme.spacingMedium * 4) / 5
-                        height: 66
+                        height: 74
                         icon: modelData.icon
                         label: armed ? "Again" : modelData.label
                         sublabel: "[" + modelData.key + "]"

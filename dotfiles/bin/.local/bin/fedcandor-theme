@@ -232,8 +232,14 @@ def templates():
     return found
 
 
-def write(path, text):
+def write(path, text, in_place=False):
+    """Atomic by default. in_place keeps the file's inode, for files another
+    program watches (a rename would silently end Quickshell's file watch)."""
     path.parent.mkdir(parents=True, exist_ok=True)
+    if in_place:
+        with open(path, "w") as fh:
+            fh.write(text)
+        return
     tmp = path.with_name(path.name + ".tmp")
     tmp.write_text(text)
     os.replace(tmp, path)
@@ -360,7 +366,7 @@ def apply(name):
     if "quickshell.json" in rendered:
         data = json.loads(rendered["quickshell.json"])
         data["wallpaper"] = wallpaper_for(name, d)
-        write(STATE / "quickshell.json", json.dumps(data, indent=2) + "\n")
+        write(STATE / "quickshell.json", json.dumps(data, indent=2) + "\n", in_place=True)
 
     if "sway.conf" in rendered:
         write(XDG_CONFIG / "sway/config.d/99-theme.conf", rendered["sway.conf"])

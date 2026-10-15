@@ -165,6 +165,7 @@ Scope {
 
                 OptionTile {
                     width: parent.w
+                    height: 82
                     icon: qs.nightLight.enabled ? "󰖔" : "󰖙"
                     label: "Night light [N]"
                     sublabel: qs.nightLight.enabled ? qs.nightLight.temperature + "K" : "Off"
@@ -173,6 +174,7 @@ Scope {
                 }
                 OptionTile {
                     width: parent.w
+                    height: 82
                     icon: qs.caffeine.enabled ? "󰅶" : "󰾪"
                     label: "Keep awake [A]"
                     sublabel: qs.caffeine.enabled ? "Screen stays on" : "Off"
@@ -181,6 +183,7 @@ Scope {
                 }
                 OptionTile {
                     width: parent.w
+                    height: 82
                     icon: ShellState.settings.dnd ? "󰂛" : "󰂚"
                     label: "Do not disturb [D]"
                     sublabel: ShellState.settings.dnd ? "Only critical" : "Off"
@@ -231,7 +234,7 @@ Scope {
                     delegate: OptionTile {
                         required property var modelData
                         width: parent.w
-                        height: 50
+                        height: 62
                         iconSize: 15
                         icon: modelData.icon
                         label: modelData.label
