@@ -5,9 +5,23 @@ section: Using fedcandor
 order: 3
 ---
 
-One theme colors everything at once, live and without restarting anything: the bar and every
-popup, the wallpaper, window borders, open terminals, the lock screen, GTK apps and icons, and
-Firefox.
+One theme colors everything at once, live and without restarting anything:
+
+| What | How it follows the theme |
+|------|--------------------------|
+| Bar, popups, lock screen, wallpaper | instantly |
+| Window borders (sway) | instantly |
+| **kitty** (the default terminal) | instantly, in every open window |
+| **Neovim** | instantly in every running Neovim using the `fedcandor` colorscheme (full Tree-sitter/LSP highlighting via mini.nvim when installed) |
+| foot | instantly, if you use it |
+| GTK apps and icons | light/dark and icon theme switch immediately |
+| Firefox | via the bundled theme extension |
+
+To make Neovim follow the theme, set the colorscheme in your `init.lua` (after your plugins load):
+
+```lua
+vim.cmd.colorscheme("fedcandor")
+```
 
 ## Switching
 
@@ -81,6 +95,6 @@ Missing keys are derived from the ones you set. Put the folder in
 key list and the template syntax are in the
 [themes README](https://github.com/etmartinkazoo/fedcandor/tree/main/themes).
 
-To theme another app, add a template to `~/.config/fedcandor/templates/`. Each `*.tpl` file
+To theme another app (for example Alacritty, Ghostty, btop or tmux), add a template to `~/.config/fedcandor/templates/`. Each `*.tpl` file
 there is rendered to `~/.local/state/fedcandor/theme/rendered/` on every theme change, using
 tokens like `{{ accent }}`, `{{ background_strip }}` or `{{ mix background accent 30% }}`.

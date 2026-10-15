@@ -16,7 +16,7 @@ Scope {
         + (tempC > 0 ? "  " + Math.round(tempC) + "°" : "")
 
     function openMonitor() {
-        ShellState.launch(["foot", "-e", "top"]);
+        ShellState.launchInTerminal(["top"]);
     }
 
     Process {

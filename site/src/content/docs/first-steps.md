@@ -13,7 +13,7 @@ searchable cheatsheet, generated live from your sway configuration.
 | Shortcut | Action |
 |----------|--------|
 | <kbd>Super</kbd>+<kbd>D</kbd> | App launcher. Type to fuzzy-search; type `=` to use it as a calculator. |
-| <kbd>Super</kbd>+<kbd>Return</kbd> | Terminal (foot) |
+| <kbd>Super</kbd>+<kbd>Return</kbd> | Terminal (kitty) |
 | <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>Return</kbd> | Firefox |
 | <kbd>Super</kbd>+<kbd>Q</kbd> | Close the focused window |
 | <kbd>Super</kbd>+<kbd>1</kbd> … <kbd>0</kbd> | Switch to workspace 1–10 |

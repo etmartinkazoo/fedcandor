@@ -59,8 +59,9 @@ site/                website and docs (Astro); deployed to GitHub Pages
   theme via `fedcandor-theme install omarchy:<name>`. Switch with <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd>
   or `fedcandor-theme set <name>`. See [themes/README.md](themes/README.md).
 - **Generated files** aren't tracked: `sway/config.d/99-theme.conf`, `foot/theme.ini`,
-  `gtk-*/settings.ini` and `quickshell/firefox-theme/theme.json` are rendered from `templates/`
-  by `fedcandor-theme` on every theme change.
+  `gtk-*/settings.ini`, `kitty/theme.conf`, `nvim/colors/fedcandor.lua` and
+  `quickshell/firefox-theme/theme.json` are rendered from `templates/` by `fedcandor-theme` on
+  every theme change, and applied live (kitty and Neovim included).
 - **Everything else** is a symlink into this repo: edit it here, then commit.
 
 ## Operating

@@ -8,7 +8,7 @@ set $down j
 set $up k
 set $right l
 
-set $term foot
+set $term kitty
 
 # Application launcher (wmenu, a dmenu replacement for Wayland)
 set $menu qs ipc call launcher open

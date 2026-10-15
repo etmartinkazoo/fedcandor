@@ -80,7 +80,8 @@ Scope {
             const argv = [];
             for (let i = 0; i < app.command.length; i++) argv.push(app.command[i]);
             if (argv.length === 0) return;
-            ShellState.launch(app.runInTerminal ? ["foot", "-e"].concat(argv) : argv, app.workingDirectory);
+            if (app.runInTerminal) ShellState.launchInTerminal(argv);
+            else ShellState.launch(argv, app.workingDirectory);
             return;
         }
         // No match: run the text as a shell command.

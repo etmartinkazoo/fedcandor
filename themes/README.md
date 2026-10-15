@@ -32,6 +32,7 @@ following Omarchy's rules, so minimal and older themes work too.
 
 ## Templates
 
+Built-in templates cover Quickshell, sway, kitty, foot, Neovim, GTK and Firefox.
 `fedcandor-theme set` renders every file in `templates/` (overridable per user in
 `~/.config/fedcandor/templates/`) with the palette:
 

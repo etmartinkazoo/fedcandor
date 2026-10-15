@@ -18,7 +18,7 @@ python3-dbus             # Bluetooth agent
 python3-gobject          # Bluetooth agent
 
 # Desktop tools used by the Quickshell plugins
-foot
+kitty                    # default terminal (themed live by fedcandor-theme)
 grim
 slurp
 jq

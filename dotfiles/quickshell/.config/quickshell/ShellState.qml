@@ -40,6 +40,15 @@ Singleton {
         else openPopup(name, screen, anchorX);
     }
 
+    // ---- Terminal ----
+    // The default terminal (matches $term in the sway config).
+    readonly property string terminal: "kitty"
+
+    // Run a command in a new terminal window.
+    function launchInTerminal(argv) {
+        launch([terminal].concat(argv));
+    }
+
     // ---- Launching apps ----
     // Quickshell runs as a systemd user service; anything started directly
     // would live in its cgroup and die whenever the shell restarts. Each

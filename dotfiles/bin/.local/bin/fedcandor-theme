@@ -284,6 +284,26 @@ def foot_live(c):
                 pass
 
 
+def kitty_live():
+    """kitty re-reads its config (including theme.conf) on SIGUSR1."""
+    subprocess.run(["pkill", "-USR1", "-u", str(os.getuid()), "-x", "kitty"], capture_output=True)
+
+
+def neovim_live():
+    """Reload the colorscheme in running Neovims that use fedcandor's (and only those)."""
+    nvim = shutil.which("nvim")
+    runtime = os.environ.get("XDG_RUNTIME_DIR") or f"/run/user/{os.getuid()}"
+    if not nvim:
+        return
+    expr = 'execute("if get(g:, \'colors_name\', \'\') ==# \'fedcandor\' | colorscheme fedcandor | endif")'
+    for sock in glob.glob(os.path.join(runtime, "nvim.*.0")):
+        try:
+            subprocess.run([nvim, "--server", sock, "--remote-expr", expr],
+                           capture_output=True, timeout=3)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+
+
 def icon_theme_installed(name):
     for base in (XDG_DATA / "icons", Path("/usr/local/share/icons"), Path("/usr/share/icons")):
         if (base / name / "index.theme").is_file():
@@ -375,6 +395,14 @@ def apply(name):
     if "foot.ini" in rendered:
         write(XDG_CONFIG / "foot/theme.ini", rendered["foot.ini"])
         foot_live(c)
+
+    if "kitty.conf" in rendered:
+        write(XDG_CONFIG / "kitty/theme.conf", rendered["kitty.conf"])
+        kitty_live()
+
+    if "neovim.lua" in rendered:
+        write(XDG_CONFIG / "nvim/colors/fedcandor.lua", rendered["neovim.lua"])
+        neovim_live()
 
     apply_gtk(d, c)
     apply_firefox(rendered)
