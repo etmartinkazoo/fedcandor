@@ -7,7 +7,6 @@ import Quickshell.Services.UPower
 Scope {
     id: batteryScope
 
-    readonly property bool active: ShellState.activePopup === "battery"
     readonly property int lowThreshold: 15
     readonly property int criticalThreshold: 5
 
@@ -109,102 +108,9 @@ Scope {
 
     IpcHandler {
         target: "battery"
-        function open() { ShellState.openPopup("battery"); }
-        function hide() { ShellState.closePopup("battery"); }
-        function toggle() { ShellState.togglePopup("battery"); }
-    }
-
-    ShellPopup {
-        name: "battery"
-        panelWidth: 424
-        defaultRightOffset: 120
-
-        Column {
-            id: batCol
-            width: parent.width
-            spacing: Theme.spacingLarge
-            focus: true
-
-            Keys.onPressed: function(event) {
-                if (event.key === Qt.Key_1) PowerProfiles.profile = PowerProfile.PowerSaver;
-                else if (event.key === Qt.Key_2) PowerProfiles.profile = PowerProfile.Balanced;
-                else if (event.key === Qt.Key_3 && PowerProfiles.hasPerformanceProfile) PowerProfiles.profile = PowerProfile.Performance;
-                else return;
-                event.accepted = true;
-            }
-
-            RowLayout {
-                width: parent.width
-                PanelTitle {
-                    text: "POWER & BATTERY"
-                    Layout.fillWidth: true
-                }
-                Text {
-                    text: batteryScope.hasBattery ? batteryScope.pct + "% • " + batteryScope.stateText : batteryScope.stateText
-                    color: batteryScope.isLow ? Theme.borderCritical : Theme.textSecondary
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.fontNormal
-                }
-            }
-
-            Column {
-                width: parent.width
-                spacing: 4
-                visible: batteryScope.hasBattery
-
-                Meter {
-                    width: parent.width
-                    height: 20
-                    value: batteryScope.pct / 100
-                    critical: batteryScope.isLow
-                }
-
-                RowLayout {
-                    width: parent.width
-                    Caption {
-                        text: batteryScope.timeText
-                        Layout.fillWidth: true
-                    }
-                    Caption {
-                        visible: batteryScope.dev && batteryScope.dev.healthSupported
-                        text: batteryScope.dev ? "Health " + Math.round(batteryScope.dev.healthPercentage) + "%" : ""
-                    }
-                }
-
-                Caption {
-                    visible: batteryScope.suspendPending
-                    text: "Suspending soon — plug in to cancel"
-                    color: Theme.borderCritical
-                }
-            }
-
-            Column {
-                width: parent.width
-                spacing: Theme.paddingSmall
-
-                Caption { text: "POWER PROFILE" }
-
-                Row {
-                    width: parent.width
-                    spacing: Theme.spacingMedium
-                    Repeater {
-                        model: batteryScope.profiles
-                        delegate: OptionTile {
-                            required property var modelData
-                            required property int index
-                            width: (batCol.width - Theme.spacingMedium * 2) / 3
-                            iconSize: 16
-                            icon: modelData.icon
-                            label: modelData.label + " [" + (index + 1) + "]"
-                            selected: PowerProfiles.profile === modelData.profile
-                            enabled: modelData.profile !== PowerProfile.Performance || PowerProfiles.hasPerformanceProfile
-                            onClicked: PowerProfiles.profile = modelData.profile
-                        }
-                    }
-                }
-            }
-
-            Hint { text: "1-3 switch profile • Esc close" }
-        }
+        // Battery details live in the System panel now.
+        function open() { ShellState.openPopup("system"); }
+        function hide() { ShellState.closePopup("system"); }
+        function toggle() { ShellState.togglePopup("system"); }
     }
 }

@@ -61,21 +61,29 @@ Scan, pair, connect and forget devices, with battery levels where available. Pai
 Output and input volume, device switching (speakers, headphones, HDMI, Bluetooth, …), per-application volume and
 mute, and a microphone mute indicator. Volume, mic and brightness keys show an on-screen display.
 
-## Battery and power
+## Quick settings
 
-Charge, time remaining, battery health, and power profiles (saver, balanced, performance). At 15%
-you get a warning; at 5% the machine suspends after a 60-second countdown, unless you plug in.
+The cog in the bar gathers appearance and everyday toggles in one place: the current theme (click
+for the [theme picker](../themes/)), screen brightness, **night light** (with warmth presets and a
+slider), **keep awake** (stops the screen sleeping during a presentation), **Do Not Disturb**, and
+one-click access to the screenshot tool, clipboard history and the shortcut cheatsheet.
+
+## System
+
+The right-most button shows the battery and opens the System panel: charge, time remaining,
+battery health, live CPU, memory and temperature, power profiles (saver, balanced, performance),
+and lock, suspend, log out, reboot and power off. Log out, reboot and power off ask for a second
+press. At 15% battery you get a warning; at 5% the machine suspends after a 60-second countdown,
+unless you plug in. <kbd>M</kbd> opens a task manager (`top`).
 
 ## Lock screen
 
-The lock screen locks after 5 minutes idle, before suspend, or from the power menu (<kbd>L</kbd>).
+The lock screen locks after 5 minutes idle, before suspend, or from the System panel (<kbd>L</kbd>).
 It uses the system's standard login authentication (PAM), and the compositor keeps the session
 locked even if the shell were to crash.
 
 ## Everything else
 
-- **Night light**: warm color temperature with presets and fine tuning; remembered across reboots.
-- **Caffeine**: keeps the screen from sleeping during a presentation.
 - **Themes**: five built in, plus any Omarchy theme; one switch recolors everything. See [Themes](../themes/).
 - **Polkit dialog**: a themed password prompt when an app needs administrator rights.
 - **System tray**: icons and menus for apps that provide them.

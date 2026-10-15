@@ -26,7 +26,6 @@ ShellRoot {
     // Plugins (all themed via Theme.qml, popups coordinated by ShellState.qml)
     Launcher { id: launcher }
     Screenshot { id: screenshotTool }
-    PowerMenu { id: powerMenu }
     Audio { id: audioTool }
     Clipboard { id: clipboardTool }
     Battery { id: batteryTool }
@@ -43,6 +42,8 @@ ShellRoot {
 
     Wallpaper {}
     ThemePicker { id: themePicker }
+    SystemPanel { id: systemPanel; battery: batteryTool; sysmon: sysMon }
+    QuickSettings { id: quickSettings; nightLight: nightLightTool; caffeine: caffeineTool }
 
     // One bar per monitor
     Variants {
@@ -135,7 +136,7 @@ ShellRoot {
                         elide: Text.ElideRight
                     }
 
-                    // Right: tray, system & plugin modules
+                    // Right: tray, quick settings, status, system
                     Row {
                         spacing: Theme.paddingSmall
 
@@ -182,37 +183,23 @@ ShellRoot {
                         }
 
                         BarButton {
-                            icon: false
-                            text: sysMon.barText
-                            critical: sysMon.hot
-                            onLeftClicked: sysMon.openMonitor()
-                        }
-
-                        BarButton {
-                            id: batBtn
-                            icon: false
-                            text: batteryTool.barText
-                            highlighted: batteryTool.active
-                            critical: batteryTool.isLow
-                            onLeftClicked: bar.toggle("battery", batBtn)
+                            id: quickBtn
+                            text: quickSettings.barText
+                            highlighted: quickSettings.active || themePicker.active
+                            onLeftClicked: bar.toggle("quick", quickBtn)
                         }
 
                         BarButton {
                             id: volBtn
                             icon: false
-                            text: audioTool.barText
+                            // A muted microphone shows inside the volume pill.
+                            text: audioTool.barText + (audioTool.micMuted ? "  " + audioTool.micIcon : "")
+                            critical: audioTool.micMuted
                             highlighted: audioTool.active
                             dim: audioTool.isMuted
                             onLeftClicked: bar.toggle("audio", volBtn)
                             onRightClicked: audioTool.toggleMute()
                             onScrolled: function(delta) { audioTool.setVolume(audioTool.sink, audioTool.volumePct + (delta > 0 ? 5 : -5)); }
-                        }
-
-                        BarButton {
-                            visible: audioTool.micMuted
-                            text: audioTool.micIcon
-                            critical: true
-                            onLeftClicked: audioTool.toggleMicMute()
                         }
 
                         BarButton {
@@ -231,44 +218,6 @@ ShellRoot {
                         }
 
                         BarButton {
-                            id: nlBtn
-                            text: nightLightTool.barIcon
-                            highlighted: nightLightTool.active || nightLightTool.enabled
-                            dim: !nightLightTool.enabled
-                            onLeftClicked: bar.toggle("nightlight", nlBtn)
-                            onRightClicked: nightLightTool.toggleEnabled()
-                        }
-
-                        BarButton {
-                            text: caffeineTool.barIcon
-                            highlighted: caffeineTool.enabled
-                            dim: !caffeineTool.enabled
-                            onLeftClicked: caffeineTool.toggle()
-                        }
-
-                        BarButton {
-                            id: themeBtn
-                            text: "󰔎"
-                            highlighted: themePicker.active
-                            onLeftClicked: ShellState.togglePopup("themes", bar.screen)
-                            onRightClicked: Theme.nextTheme()
-                        }
-
-                        BarButton {
-                            id: clipBtn
-                            text: "󰅌"
-                            highlighted: clipboardTool.active
-                            onLeftClicked: bar.toggle("clipboard", clipBtn)
-                        }
-
-                        BarButton {
-                            id: shotBtn
-                            text: "󰄀"
-                            highlighted: screenshotTool.active
-                            onLeftClicked: ShellState.togglePopup("screenshot", bar.screen)
-                        }
-
-                        BarButton {
                             id: notifBtn
                             icon: false
                             text: notifCenter.barText
@@ -278,10 +227,12 @@ ShellRoot {
                         }
 
                         BarButton {
-                            id: powerBtn
-                            text: "⏻"
-                            highlighted: powerMenu.active
-                            onLeftClicked: bar.toggle("power", powerBtn)
+                            id: systemBtn
+                            icon: !batteryTool.hasBattery
+                            text: systemPanel.barText
+                            highlighted: systemPanel.active
+                            critical: batteryTool.isLow
+                            onLeftClicked: bar.toggle("system", systemBtn)
                         }
                     }
                 }

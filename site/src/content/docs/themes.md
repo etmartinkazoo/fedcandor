@@ -11,9 +11,9 @@ Firefox.
 
 ## Switching
 
-Press <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd>, or click the theme button in the bar, to open the
-picker. Arrow keys move, <kbd>Enter</kbd> applies (the picker stays open so you can compare), and
-<kbd>B</kbd> shows the theme's next wallpaper. Right-click the bar button to step to the next theme.
+Press <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd>, or click the theme in Quick Settings (the cog in the
+bar), to open the picker. Arrow keys move, <kbd>Enter</kbd> applies (the picker stays open so you can compare), and
+<kbd>B</kbd> shows the theme's next wallpaper.
 
 From a terminal:
 

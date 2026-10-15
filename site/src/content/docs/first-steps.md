@@ -22,7 +22,7 @@ searchable cheatsheet, generated live from your sway configuration.
 | <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> | Clipboard history |
 | <kbd>Print</kbd> or <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> | Screenshot and screen recording |
 | <kbd>Super</kbd>+<kbd>N</kbd> | Notification center |
-| <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> | Power menu: lock, suspend, log out, reboot, power off |
+| <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> | System panel: battery, power profiles, lock, suspend, log out, reboot, power off |
 | <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd> | Theme picker |
 
 ## Windows and layouts
@@ -51,21 +51,14 @@ The bar runs along the bottom of every screen.
 
 **Right**, from left to right:
 
-| Item | Click | Right-click / other |
-|------|-------|---------------------|
-| App tray icons | Activate | Menu |
-| CPU · memory · temperature | Open `top` | Turns red under heavy load |
-| Battery | Battery & power profiles | |
-| Volume | Audio mixer | Right-click mutes · scroll to adjust |
-| Microphone (only shown when muted) | Unmute | |
+| Item | Click | Other |
+|------|-------|-------|
+| App tray icons | Activate | Right-click for the app's menu |
+| **Quick settings** (cog) | Theme, brightness, night light, keep awake, Do Not Disturb, and the screenshot, clipboard and shortcut tools | Shows a cup while keep awake is on, and a crossed bell in Do Not Disturb |
+| Volume | Audio mixer | Right-click mutes · scroll to adjust · shows a crossed mic when the microphone is muted |
 | Wi-Fi | Networks & DNS | |
 | Bluetooth | Devices | Right-click toggles power |
-| Night light | Color temperature | Right-click toggles |
-| Caffeine | Keep the screen awake | |
-| Theme | Theme picker | Right-click: next theme |
-| Clipboard | Clipboard history | |
-| Camera | Screenshot tool | |
 | Bell | Notification center | Right-click toggles Do Not Disturb |
-| Power | Power menu | |
+| **System** (battery · power) | Battery, CPU/memory/temperature, power profiles, lock, suspend, log out, reboot, power off | Turns red when the battery is low |
 
 Every popup is keyboard driven: its bottom line shows the keys, and <kbd>Esc</kbd> closes it.
