@@ -74,6 +74,15 @@ ShellRoot {
                 border.width: Theme.borderWidth
                 radius: Theme.radius
 
+                // Center: clock, at the exact center of the bar
+                Text {
+                    anchors.centerIn: parent
+                    text: root.clockText(bar.width >= 1600)
+                    color: Theme.textPrimary
+                    font.family: Theme.fontFamily
+                    font.pixelSize: Theme.fontNormal
+                }
+
                 RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: Theme.paddingMedium
@@ -125,16 +134,7 @@ ShellRoot {
                         }
                     }
 
-                    // Center: clock, centered in the space between the two sides
-                    Text {
-                        Layout.fillWidth: true
-                        horizontalAlignment: Text.AlignHCenter
-                        text: root.clockText(bar.width >= 1600)
-                        color: Theme.textPrimary
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontNormal
-                        elide: Text.ElideRight
-                    }
+                    Item { Layout.fillWidth: true }
 
                     // Right: tray, quick settings, status, system
                     Row {
