@@ -80,4 +80,9 @@ jobs:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
           DIGEST: ${{ steps.push.outputs.digest }}
           IMAGE: ${{ steps.meta.outputs.registry }}/${{ env.IMAGE_NAME }}
-        run: cosign sign --yes --key env://COSIGN_PRIVATE_KEY "${IMAGE}@${DIGEST}"
+        run: |
+          if [ -z "${COSIGN_PRIVATE_KEY}" ]; then
+            echo "::warning::COSIGN_PRIVATE_KEY not set: image pushed UNSIGNED (see atomic/README.md)"
+            exit 0
+          fi
+          cosign sign --yes --key env://COSIGN_PRIVATE_KEY "${IMAGE}@${DIGEST}"

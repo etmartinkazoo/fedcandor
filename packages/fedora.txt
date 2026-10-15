@@ -37,7 +37,7 @@ NetworkManager
 NetworkManager-wifi
 bluez
 upower
-power-profiles-daemon
+ppd-service              # power profiles API: tuned-ppd (Fedora default) or power-profiles-daemon
 firewalld
 
 # Installer & dotfiles
