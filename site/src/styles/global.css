@@ -1,0 +1,198 @@
+@font-face {
+	font-family: '0xProto';
+	src: url('/fedcandor/fonts/0xProto-Regular.woff2') format('woff2');
+	font-weight: 400;
+	font-display: swap;
+}
+@font-face {
+	font-family: '0xProto';
+	src: url('/fedcandor/fonts/0xProto-Bold.woff2') format('woff2');
+	font-weight: 700;
+	font-display: swap;
+}
+
+/* Nerd Font icon glyphs only (see scripts/subset-icons.py) */
+@font-face {
+	font-family: 'fc-icons';
+	src: url('/fedcandor/fonts/fc-icons.woff') format('woff');
+	font-display: block;
+}
+
+:root {
+	--bg: #090e17;
+	--bg-raised: #0e1624;
+	--surface: #121c2d;
+	--surface-hover: #182540;
+	--border: #1f2e47;
+	--border-strong: #385a94;
+	--text: #e8eefa;
+	--text-muted: #9cb0cf;
+	--text-faint: #6b82a6;
+	--accent: #6f9cf2;
+	--accent-strong: #a9c4ff;
+	--accent-bg: #1f3d6e;
+	--spark: #f4f8ff;
+	--ok: #5fd08a;
+	--warn: #e3b341;
+	--danger: #ff7b72;
+
+	--font-mono: 'fc-icons', '0xProto', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+	--font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+	--radius: 10px;
+	--radius-sm: 6px;
+	--max: 1120px;
+	--gutter: clamp(16px, 4vw, 32px);
+
+	color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	-webkit-text-size-adjust: 100%;
+	scroll-padding-top: 80px;
+}
+
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--text);
+	font-family: var(--font-sans);
+	font-size: 17px;
+	line-height: 1.65;
+	-webkit-font-smoothing: antialiased;
+	overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+h4 {
+	font-family: var(--font-mono);
+	font-weight: 700;
+	line-height: 1.2;
+	letter-spacing: -0.01em;
+	margin: 0 0 0.6em;
+	text-wrap: balance;
+}
+
+p {
+	margin: 0 0 1em;
+	text-wrap: pretty;
+}
+
+a {
+	color: var(--accent-strong);
+	text-decoration-color: color-mix(in srgb, var(--accent-strong) 40%, transparent);
+	text-underline-offset: 3px;
+}
+a:hover {
+	text-decoration-color: currentColor;
+}
+
+code,
+kbd,
+pre {
+	font-family: var(--font-mono);
+	font-size: 0.88em;
+}
+
+:not(pre) > code {
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: 4px;
+	padding: 0.1em 0.35em;
+}
+
+kbd {
+	background: var(--surface);
+	border: 1px solid var(--border-strong);
+	border-bottom-width: 2px;
+	border-radius: 4px;
+	padding: 0.05em 0.4em;
+	white-space: nowrap;
+}
+
+pre {
+	background: #0d1117 !important;
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: 16px 18px;
+	overflow-x: auto;
+	line-height: 1.55;
+}
+
+img,
+svg {
+	max-width: 100%;
+}
+
+:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
+}
+
+.container {
+	width: 100%;
+	max-width: var(--max);
+	margin: 0 auto;
+	padding: 0 var(--gutter);
+}
+
+.btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	font-family: var(--font-mono);
+	font-size: 15px;
+	font-weight: 700;
+	padding: 12px 20px;
+	border-radius: var(--radius-sm);
+	border: 1px solid var(--border-strong);
+	text-decoration: none;
+	color: var(--text);
+	background: var(--surface);
+	transition: background 0.15s, border-color 0.15s;
+}
+.btn:hover {
+	background: var(--surface-hover);
+	border-color: var(--accent);
+}
+.btn-primary {
+	background: var(--accent-bg);
+	border-color: var(--accent);
+	color: var(--spark);
+}
+.btn-primary:hover {
+	background: #27508f;
+}
+
+.eyebrow {
+	font-family: var(--font-mono);
+	font-size: 13px;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: var(--accent);
+	margin-bottom: 12px;
+}
+
+.visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	* {
+		transition: none !important;
+		animation: none !important;
+	}
+}

@@ -1,0 +1,168 @@
+---
+import '../styles/global.css';
+import Logo from '../components/Logo.astro';
+import { url, REPO } from '../lib';
+
+interface Props {
+	title: string;
+	description: string;
+}
+const { title, description } = Astro.props;
+const fullTitle = title === 'fedcandor' ? 'fedcandor: stable, secure, beautiful' : `${title} · fedcandor`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = new URL(url('og.png'), Astro.site);
+const path = Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>{fullTitle}</title>
+		<meta name="description" content={description} />
+		<link rel="canonical" href={canonical} />
+		<link rel="icon" type="image/svg+xml" href={url('favicon.svg')} />
+		<link rel="preload" href={url('fonts/0xProto-Bold.woff2')} as="font" type="font/woff2" crossorigin />
+		<meta name="theme-color" content="#090e17" />
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content={fullTitle} />
+		<meta property="og:description" content={description} />
+		<meta property="og:url" content={canonical} />
+		<meta property="og:image" content={ogImage} />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="generator" content={Astro.generator} />
+	</head>
+	<body>
+		<a class="skip" href="#main">Skip to content</a>
+		<header class="site-header">
+			<div class="container bar">
+				<a class="home" href={url()} aria-label="fedcandor home"><Logo size={30} /></a>
+				<nav aria-label="Main">
+					<a href={url('docs/introduction/')} aria-current={path.includes('/docs/') ? 'page' : undefined}>Docs</a>
+					<a href={url('docs/install-atomic/')}>Install</a>
+					<a href={url('docs/security/')}>Security</a>
+					<a href={REPO} class="gh">GitHub</a>
+				</nav>
+			</div>
+		</header>
+
+		<main id="main">
+			<slot />
+		</main>
+
+		<footer class="site-footer">
+			<div class="container foot">
+				<div>
+					<Logo size={24} />
+					<p class="tag">Fedora Atomic + sway + Quickshell. No compromises.</p>
+				</div>
+				<div class="links">
+					<a href={url('docs/introduction/')}>Docs</a>
+					<a href={url('docs/teams/')}>For teams</a>
+					<a href={url('docs/faq/')}>FAQ</a>
+					<a href={REPO}>Source</a>
+				</div>
+				<p class="legal">
+					fedcandor is an independent project, not affiliated with or endorsed by the Fedora Project or Red Hat.
+					Fedora is a trademark of Red Hat, Inc.
+				</p>
+			</div>
+		</footer>
+	</body>
+</html>
+
+<style>
+	.skip {
+		position: absolute;
+		left: -999px;
+		top: 8px;
+		background: var(--accent-bg);
+		color: var(--spark);
+		padding: 8px 12px;
+		border-radius: var(--radius-sm);
+		z-index: 100;
+	}
+	.skip:focus {
+		left: 8px;
+	}
+	.site-header {
+		position: sticky;
+		top: 0;
+		z-index: 50;
+		background: color-mix(in srgb, var(--bg) 85%, transparent);
+		backdrop-filter: blur(10px);
+		border-bottom: 1px solid var(--border);
+	}
+	.bar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		height: 64px;
+		gap: 16px;
+	}
+	.home {
+		text-decoration: none;
+	}
+	nav {
+		display: flex;
+		gap: clamp(12px, 3vw, 28px);
+		font-family: var(--font-mono);
+		font-size: 14px;
+	}
+	nav a {
+		color: var(--text-muted);
+		text-decoration: none;
+	}
+	nav a:hover,
+	nav a[aria-current='page'] {
+		color: var(--spark);
+	}
+	@media (max-width: 560px) {
+		nav a:not(:first-child):not(.gh) {
+			display: none;
+		}
+	}
+	.site-footer {
+		border-top: 1px solid var(--border);
+		margin-top: 96px;
+		padding: 40px 0 48px;
+		background: var(--bg-raised);
+	}
+	.foot {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		gap: 24px;
+		align-items: start;
+	}
+	.tag {
+		color: var(--text-faint);
+		font-size: 14px;
+		margin: 10px 0 0;
+	}
+	.links {
+		display: flex;
+		gap: 20px;
+		flex-wrap: wrap;
+		font-family: var(--font-mono);
+		font-size: 14px;
+	}
+	.links a {
+		color: var(--text-muted);
+		text-decoration: none;
+	}
+	.links a:hover {
+		color: var(--spark);
+	}
+	.legal {
+		grid-column: 1 / -1;
+		color: var(--text-faint);
+		font-size: 13px;
+		margin: 0;
+	}
+	@media (max-width: 640px) {
+		.foot {
+			grid-template-columns: 1fr;
+		}
+	}
+</style>

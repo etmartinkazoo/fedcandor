@@ -1,0 +1,58 @@
+---
+// The fedcandor mark: a sway tiling layout (one tall window, two stacked)
+// where one tile carries a four-point spark: candor, Latin for radiance.
+interface Props {
+	size?: number;
+	wordmark?: boolean;
+}
+const { size = 32, wordmark = true } = Astro.props;
+const id = `fc${Math.random().toString(36).slice(2, 7)}`;
+---
+
+<span class="logo">
+	<svg width={size} height={size} viewBox="0 0 64 64" aria-hidden={wordmark ? 'true' : undefined} role={wordmark ? undefined : 'img'} aria-label={wordmark ? undefined : 'fedcandor'}>
+		<defs>
+			<linearGradient id={`${id}-bg`} x1="0" y1="0" x2="1" y2="1">
+				<stop offset="0" stop-color="#1a2a45"></stop>
+				<stop offset="1" stop-color="#0a101b"></stop>
+			</linearGradient>
+			<linearGradient id={`${id}-tile`} x1="0" y1="0" x2="0" y2="1">
+				<stop offset="0" stop-color="#3a64a8"></stop>
+				<stop offset="1" stop-color="#1f3d6e"></stop>
+			</linearGradient>
+			<radialGradient id={`${id}-glow`} cx="0.5" cy="0.5" r="0.5">
+				<stop offset="0" stop-color="#bcd4ff" stop-opacity="0.55"></stop>
+				<stop offset="1" stop-color="#bcd4ff" stop-opacity="0"></stop>
+			</radialGradient>
+		</defs>
+		<rect width="64" height="64" rx="15" fill={`url(#${id}-bg)`}></rect>
+		<rect x="10" y="10" width="20" height="44" rx="4" fill={`url(#${id}-tile)`}></rect>
+		<rect x="34" y="34" width="20" height="20" rx="4" fill={`url(#${id}-tile)`}></rect>
+		<rect x="34" y="10" width="20" height="20" rx="4" fill="#0f1a2c" stroke="#3a64a8" stroke-width="1.2"></rect>
+		<circle cx="44" cy="20" r="11" fill={`url(#${id}-glow)`}></circle>
+		<path d="M44 11.5 C44.9 17.6 46.4 19.1 52.5 20 C46.4 20.9 44.9 22.4 44 28.5 C43.1 22.4 41.6 20.9 35.5 20 C41.6 19.1 43.1 17.6 44 11.5 Z" fill="#f4f8ff"></path>
+	</svg>
+	{wordmark && <span class="wordmark">fed<span>candor</span></span>}
+</span>
+
+<style>
+	.logo {
+		display: inline-flex;
+		align-items: center;
+		gap: 10px;
+	}
+	svg {
+		flex: none;
+		display: block;
+	}
+	.wordmark {
+		font-family: var(--font-mono);
+		font-weight: 700;
+		font-size: 19px;
+		letter-spacing: -0.02em;
+		color: var(--text-muted);
+	}
+	.wordmark span {
+		color: var(--spark);
+	}
+</style>

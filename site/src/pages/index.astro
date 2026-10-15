@@ -1,0 +1,547 @@
+---
+import Base from '../layouts/Base.astro';
+import Logo from '../components/Logo.astro';
+import DesktopPreview from '../components/DesktopPreview.astro';
+import { url, REPO, IMAGE } from '../lib';
+
+const layers = [
+	{
+		name: 'Fedora Atomic',
+		gives: 'Stability & security',
+		text: 'The OS is a signed image. Updates apply whole or not at all, and the last version is one reboot away.',
+	},
+	{
+		name: 'sway',
+		gives: 'Productivity',
+		text: 'Keyboard-first tiling. Every window has a place; nothing overlaps, nothing needs dragging.',
+	},
+	{
+		name: 'Quickshell',
+		gives: 'Beauty',
+		text: 'One coherent, themed shell: bar, launcher, notifications, clipboard, lock screen and more.',
+	},
+];
+
+const audiences = [
+	{ who: 'Business owners', what: 'Machines that stay up, stay patched and stay out of the way. Your team works; nobody babysits computers.' },
+	{ who: 'Admins', what: 'One signed image for every laptop. Pin it, pilot it, roll it out, and roll it back in one reboot.' },
+	{ who: 'Employees', what: 'A fast, calm desktop that looks the same every morning, with a cheatsheet one keystroke away.' },
+	{ who: 'Power users', what: 'Every action a keystroke away. Tiling, a launcher with a calculator, clipboard history, scriptable everything.' },
+];
+
+const features = [
+	{ icon: '󰍉', title: 'Launcher', text: 'Fuzzy app search that learns what you use, with a built-in calculator.' },
+	{ icon: '󰅌', title: 'Clipboard history', text: 'Text and images, searchable. Skips password-manager secrets.' },
+	{ icon: '󰄀', title: 'Screenshots & recording', text: 'Area, window or screen. Copy, save, annotate or record.' },
+	{ icon: '󰂚', title: 'Notifications', text: 'Actions, history and Do Not Disturb that still lets critical alerts through.' },
+	{ icon: '󰤨', title: 'Wi-Fi & DNS', text: 'Networks, passwords and one-click Cloudflare or custom DNS.' },
+	{ icon: '󰂯', title: 'Bluetooth', text: 'Pair, connect and see battery levels. Deny-by-default pairing.' },
+	{ icon: '󰕾', title: 'Audio', text: 'Devices, per-app volume, mic mute and on-screen feedback.' },
+	{ icon: '󰌾', title: 'Lock screen', text: 'Locks before every suspend, and stays locked even if the shell crashes.' },
+	{ icon: '󰁹', title: 'Battery & power', text: 'Time remaining, health, power profiles, and a safe low-battery suspend.' },
+	{ icon: '󰖔', title: 'Night light', text: 'Warm evenings, remembered across reboots.' },
+	{ icon: '󰔎', title: 'Themes', text: 'One switch recolors the shell, borders, terminals, icons and Firefox.' },
+	{ icon: '󰌌', title: 'Cheatsheet', text: 'Super + / shows every shortcut, generated from your live config.' },
+];
+
+const security = [
+	'Full-disk encryption and Secure Boot',
+	'SELinux enforcing',
+	'Read-only, signed OS image',
+	'Automatic daily security updates',
+	'Firewall on, ssh closed',
+	'Deny-by-default Bluetooth pairing',
+	'Lock before every suspend',
+	'Pinned, checksum-verified downloads',
+];
+---
+
+<Base title="fedcandor" description="A stable, secure and beautiful desktop for people who get things done: Fedora Atomic, sway and Quickshell, with no compromises.">
+	<section class="hero">
+		<div class="container hero-grid">
+			<div class="hero-copy">
+				<p class="eyebrow">Fedora Atomic · sway · Quickshell</p>
+				<h1>Stable. Secure. Beautiful.<br /><span class="spark-text">No compromises.</span></h1>
+				<p class="lede">
+					fedcandor is a desktop for people whose computer is a tool for work. An operating system that can't
+					break, a workflow built for speed, and a shell that's a pleasure to look at, all in one signed image.
+				</p>
+				<div class="ctas">
+					<a class="btn btn-primary" href={url('docs/install-atomic/')}>Get started →</a>
+					<a class="btn" href={url('docs/introduction/')}>Read the docs</a>
+				</div>
+			</div>
+			<DesktopPreview />
+		</div>
+	</section>
+
+	<section class="container" aria-labelledby="layers-title">
+		<h2 id="layers-title" class="visually-hidden">Three layers</h2>
+		<div class="layers">
+		{layers.map((l, i) => (
+			<div class="layer">
+				<span class="layer-num">0{i + 1}</span>
+				<h3>{l.name}</h3>
+				<p class="gives">{l.gives}</p>
+				<p>{l.text}</p>
+			</div>
+		))}
+		</div>
+	</section>
+
+	<section class="container section" aria-labelledby="compromise-title">
+		<p class="eyebrow">The end of compromise</p>
+		<h2 id="compromise-title">You used to have to pick two.</h2>
+		<p class="section-lede">
+			Stable systems were dull. Beautiful ones broke on updates. Fast ones ate your weekends. fedcandor puts
+			mature, conservative foundations underneath a modern, polished shell, so the choice goes away.
+		</p>
+		<div class="compare">
+			<div class="compare-col">
+				<p class="compare-head muted">Usually</p>
+				<ul>
+					<li>Rolling releases that break without warning</li>
+					<li>Security left as homework</li>
+					<li>Polish held together by dozens of separate tools</li>
+					<li>Reinstall when something goes wrong</li>
+				</ul>
+			</div>
+			<div class="compare-col highlight">
+				<p class="compare-head">With fedcandor</p>
+				<ul>
+					<li>Fedora's fixed releases, applied as atomic images</li>
+					<li>Encrypted, patched and firewalled by default</li>
+					<li>One shell, one theme, one source of truth</li>
+					<li>Roll back with a single reboot</li>
+				</ul>
+			</div>
+		</div>
+	</section>
+
+	<section class="container section" aria-labelledby="who-title">
+		<p class="eyebrow">Who it's for</p>
+		<h2 id="who-title">For people who want to be insanely productive.</h2>
+		<div class="cards four">
+			{audiences.map((a) => (
+				<div class="card">
+					<h3>{a.who}</h3>
+					<p>{a.what}</p>
+				</div>
+			))}
+		</div>
+		<p class="more"><a href={url('docs/teams/')}>Rolling it out to a team →</a></p>
+	</section>
+
+	<section class="container section" aria-labelledby="features-title">
+		<p class="eyebrow">The shell</p>
+		<h2 id="features-title">Everything you reach for, one keystroke away.</h2>
+		<div class="features">
+			{features.map((f) => (
+				<div class="feature">
+					<span class="feature-icon" aria-hidden="true">{f.icon}</span>
+					<div>
+						<h3>{f.title}</h3>
+						<p>{f.text}</p>
+					</div>
+				</div>
+			))}
+		</div>
+		<p class="more"><a href={url('docs/shell/')}>Every feature in detail →</a></p>
+	</section>
+
+	<section class="container section" aria-labelledby="security-title">
+		<div class="security">
+		<div>
+			<p class="eyebrow">Security</p>
+			<h2 id="security-title">Secure by default. Verifiable by anyone.</h2>
+			<p class="section-lede">
+				No checklist to work through after install. fedcandor ships with the protections switched on, built from
+				audited, mainstream components, and documents every one so you can check it yourself.
+			</p>
+			<a class="btn" href={url('docs/security/')}>Read the security model</a>
+		</div>
+		<ul class="checks">
+			{security.map((s) => <li>{s}</li>)}
+		</ul>
+		</div>
+	</section>
+
+	<section class="container section" aria-labelledby="install-title">
+		<p class="eyebrow">Install</p>
+		<h2 id="install-title">Two reboots to a new desktop.</h2>
+		<div class="install">
+			<div class="install-card">
+				<h3>Fedora Atomic <span class="badge">recommended</span></h3>
+				<p>Install Fedora Sway Atomic with disk encryption, then rebase:</p>
+				<pre><code>rpm-ostree rebase ostree-unverified-registry:{IMAGE}:latest
+systemctl reboot
+rpm-ostree rebase ostree-image-signed:docker://{IMAGE}:latest
+systemctl reboot</code></pre>
+				<a href={url('docs/install-atomic/')}>Full instructions →</a>
+			</div>
+			<div class="install-card">
+				<h3>Fedora Workstation</h3>
+				<p>Already on regular Fedora? One idempotent script:</p>
+				<pre><code>git clone {REPO} ~/fedcandor
+cd ~/fedcandor && ./install.sh</code></pre>
+				<a href={url('docs/install-workstation/')}>Full instructions →</a>
+			</div>
+		</div>
+	</section>
+
+	<section class="container section name" aria-labelledby="name-title">
+		<Logo size={72} wordmark={false} />
+		<div>
+			<h2 id="name-title">fed·candor</h2>
+			<p>
+				<em>Fedora</em> + <em>candor</em>, Latin for brilliance and radiance, and for sincerity and openness. A
+				desktop that's a pleasure to look at, and honest about what it does: every line of it is open and auditable.
+			</p>
+		</div>
+	</section>
+</Base>
+
+<style>
+	.hero {
+		padding: clamp(48px, 8vw, 96px) 0 48px;
+		background:
+			radial-gradient(ellipse 60% 50% at 75% 30%, rgba(63, 110, 200, 0.18), transparent 70%),
+			radial-gradient(ellipse 40% 40% at 10% 0%, rgba(111, 156, 242, 0.08), transparent 70%);
+	}
+	.hero-grid {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+		gap: clamp(32px, 5vw, 64px);
+		align-items: center;
+	}
+	h1 {
+		font-size: clamp(30px, 3.5vw, 46px);
+		margin-bottom: 20px;
+	}
+	.spark-text {
+		color: var(--spark);
+		text-shadow: 0 0 24px rgba(169, 196, 255, 0.35);
+	}
+	.lede {
+		font-size: clamp(17px, 2vw, 19px);
+		color: var(--text-muted);
+		max-width: 34em;
+	}
+	.ctas {
+		display: flex;
+		gap: 12px;
+		flex-wrap: wrap;
+		margin-top: 28px;
+	}
+	@media (max-width: 900px) {
+		.hero-grid {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	.layers {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 1px;
+		background: var(--border);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		overflow: hidden;
+		margin-top: 24px;
+	}
+	.layer {
+		background: var(--bg-raised);
+		padding: 28px;
+	}
+	.layer h3 {
+		font-size: 20px;
+		margin: 8px 0 2px;
+	}
+	.layer-num {
+		font-family: var(--font-mono);
+		font-size: 13px;
+		color: var(--text-faint);
+	}
+	.gives {
+		font-family: var(--font-mono);
+		color: var(--accent);
+		font-size: 14px;
+	}
+	.layer p:last-child {
+		color: var(--text-muted);
+		margin: 0;
+		font-size: 16px;
+	}
+	@media (max-width: 760px) {
+		.layers {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	.section {
+		margin-top: clamp(72px, 10vw, 120px);
+	}
+	.section h2 {
+		font-size: clamp(26px, 3.6vw, 36px);
+		max-width: 24em;
+	}
+	.section-lede {
+		color: var(--text-muted);
+		font-size: 18px;
+		max-width: 40em;
+	}
+	.more {
+		margin-top: 24px;
+		font-family: var(--font-mono);
+		font-size: 15px;
+	}
+
+	.compare {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 16px;
+		margin-top: 32px;
+	}
+	.compare-col {
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		padding: 24px 28px;
+		background: var(--bg-raised);
+	}
+	.compare-col.highlight {
+		border-color: var(--border-strong);
+		background: linear-gradient(180deg, rgba(31, 61, 110, 0.35), var(--bg-raised));
+	}
+	.compare-head {
+		font-family: var(--font-mono);
+		font-weight: 700;
+		margin-bottom: 12px;
+	}
+	.compare-head.muted {
+		color: var(--text-faint);
+	}
+	.compare ul {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+	.compare li {
+		padding: 8px 0 8px 28px;
+		position: relative;
+		border-top: 1px solid var(--border);
+	}
+	.compare li:first-child {
+		border-top: 0;
+	}
+	.compare-col:not(.highlight) li {
+		color: var(--text-muted);
+	}
+	.compare-col:not(.highlight) li::before {
+		content: '×';
+		position: absolute;
+		left: 4px;
+		color: var(--text-faint);
+	}
+	.highlight li::before {
+		content: '✓';
+		position: absolute;
+		left: 4px;
+		color: var(--ok);
+	}
+	@media (max-width: 700px) {
+		.compare {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	.cards {
+		display: grid;
+		gap: 16px;
+		margin-top: 32px;
+	}
+	.cards.four {
+		grid-template-columns: repeat(4, 1fr);
+	}
+	.card {
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		padding: 24px;
+		background: var(--bg-raised);
+	}
+	.card h3 {
+		font-size: 17px;
+		color: var(--spark);
+	}
+	.card p {
+		color: var(--text-muted);
+		font-size: 15px;
+		margin: 0;
+	}
+	@media (max-width: 1000px) {
+		.cards.four {
+			grid-template-columns: repeat(2, 1fr);
+		}
+	}
+	@media (max-width: 560px) {
+		.cards.four {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	.features {
+		display: grid;
+		grid-template-columns: repeat(3, 1fr);
+		gap: 28px 32px;
+		margin-top: 36px;
+	}
+	.feature {
+		display: flex;
+		gap: 14px;
+	}
+	.feature-icon {
+		flex: none;
+		width: 40px;
+		height: 40px;
+		display: grid;
+		place-items: center;
+		border: 1px solid var(--border-strong);
+		border-radius: var(--radius-sm);
+		background: var(--surface);
+		color: var(--accent-strong);
+		font-family: var(--font-mono);
+		font-size: 18px;
+	}
+	.feature h3 {
+		font-size: 16px;
+		margin: 2px 0 4px;
+	}
+	.feature p {
+		color: var(--text-muted);
+		font-size: 15px;
+		margin: 0;
+	}
+	@media (max-width: 900px) {
+		.features {
+			grid-template-columns: repeat(2, 1fr);
+		}
+	}
+	@media (max-width: 560px) {
+		.features {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	.security {
+		display: grid;
+		grid-template-columns: 1.1fr 1fr;
+		gap: 48px;
+		align-items: center;
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		padding: clamp(24px, 4vw, 48px);
+		background: linear-gradient(135deg, rgba(31, 61, 110, 0.25), var(--bg-raised) 60%);
+	}
+	.security .btn {
+		margin-top: 8px;
+	}
+	.checks {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: grid;
+		gap: 10px;
+	}
+	.checks li {
+		padding: 10px 14px 10px 40px;
+		position: relative;
+		background: var(--surface);
+		border: 1px solid var(--border);
+		border-radius: var(--radius-sm);
+		font-size: 15px;
+	}
+	.checks li::before {
+		content: '✓';
+		position: absolute;
+		left: 14px;
+		color: var(--ok);
+		font-weight: 700;
+	}
+	@media (max-width: 860px) {
+		.security {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	.install {
+		display: grid;
+		grid-template-columns: 1.3fr 1fr;
+		gap: 16px;
+		margin-top: 32px;
+	}
+	.install-card {
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		padding: 24px;
+		background: var(--bg-raised);
+		min-width: 0;
+	}
+	.install-card h3 {
+		font-size: 18px;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		flex-wrap: wrap;
+	}
+	.install-card p {
+		color: var(--text-muted);
+		font-size: 15px;
+	}
+	.install-card pre {
+		font-size: 13px;
+		margin: 0 0 16px;
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
+	}
+	.install-card a {
+		font-family: var(--font-mono);
+		font-size: 14px;
+	}
+	.badge {
+		font-size: 11px;
+		font-weight: 400;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--spark);
+		background: var(--accent-bg);
+		border: 1px solid var(--accent);
+		border-radius: 999px;
+		padding: 2px 10px;
+	}
+	@media (max-width: 860px) {
+		.install {
+			grid-template-columns: 1fr;
+		}
+	}
+
+	.name {
+		display: flex;
+		gap: 28px;
+		align-items: center;
+	}
+	.name > div {
+		max-width: 40em;
+	}
+	.name h2 {
+		margin-bottom: 8px;
+	}
+	.name p {
+		color: var(--text-muted);
+		margin: 0;
+	}
+	@media (max-width: 560px) {
+		.name {
+			flex-direction: column;
+			align-items: flex-start;
+		}
+	}
+</style>

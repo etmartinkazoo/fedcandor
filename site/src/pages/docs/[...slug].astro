@@ -1,0 +1,267 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { url, REPO, SECTIONS } from '../../lib';
+
+export async function getStaticPaths() {
+	const docs = await getCollection('docs');
+	return docs.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const { Content, headings } = await render(entry);
+
+const all = (await getCollection('docs')).sort(
+	(a, b) => SECTIONS.indexOf(a.data.section) - SECTIONS.indexOf(b.data.section) || a.data.order - b.data.order,
+);
+const index = all.findIndex((d) => d.id === entry.id);
+const prev = all[index - 1];
+const next = all[index + 1];
+const toc = headings.filter((h) => h.depth === 2);
+---
+
+<Base title={entry.data.title} description={entry.data.description}>
+	<div class="container docs">
+		<aside class="sidebar" aria-label="Documentation">
+			<details open>
+				<summary>Documentation</summary>
+				{SECTIONS.map((section) => (
+					<div class="group">
+						<p class="group-title">{section}</p>
+						<ul>
+							{all.filter((d) => d.data.section === section).map((d) => (
+								<li>
+									<a href={url(`docs/${d.id}/`)} aria-current={d.id === entry.id ? 'page' : undefined}>{d.data.title}</a>
+								</li>
+							))}
+						</ul>
+					</div>
+				))}
+			</details>
+		</aside>
+
+		<article class="content">
+			<p class="eyebrow">{entry.data.section}</p>
+			<h1>{entry.data.title}</h1>
+			<p class="lede">{entry.data.description}</p>
+			{toc.length > 2 && (
+				<nav class="toc" aria-label="On this page">
+					<p>On this page</p>
+					<ul>{toc.map((h) => <li><a href={`#${h.slug}`}>{h.text}</a></li>)}</ul>
+				</nav>
+			)}
+			<div class="prose"><Content /></div>
+
+			<nav class="pager" aria-label="Pagination">
+				{prev ? <a class="prev" href={url(`docs/${prev.id}/`)}><span>Previous</span>{prev.data.title}</a> : <span></span>}
+				{next && <a class="next" href={url(`docs/${next.id}/`)}><span>Next</span>{next.data.title}</a>}
+			</nav>
+			<p class="edit"><a href={`${REPO}/edit/main/site/src/content/docs/${entry.id}.md`}>Edit this page on GitHub</a></p>
+		</article>
+	</div>
+</Base>
+
+<style>
+	.docs {
+		display: grid;
+		grid-template-columns: 240px minmax(0, 1fr);
+		gap: 56px;
+		padding-top: 40px;
+	}
+	.sidebar details {
+		position: sticky;
+		top: 88px;
+	}
+	.sidebar summary {
+		display: none;
+	}
+	.group {
+		margin-bottom: 22px;
+	}
+	.group-title {
+		font-family: var(--font-mono);
+		font-size: 12px;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--text-faint);
+		margin: 0 0 6px;
+	}
+	.sidebar ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+	}
+	.sidebar a {
+		display: block;
+		padding: 5px 10px;
+		margin-left: -10px;
+		border-radius: var(--radius-sm);
+		color: var(--text-muted);
+		text-decoration: none;
+		font-size: 15px;
+	}
+	.sidebar a:hover {
+		color: var(--text);
+		background: var(--surface);
+	}
+	.sidebar a[aria-current='page'] {
+		color: var(--spark);
+		background: var(--accent-bg);
+	}
+	.content {
+		max-width: 760px;
+	}
+	.content > h1 {
+		font-size: clamp(30px, 4vw, 40px);
+		margin-bottom: 12px;
+	}
+	.lede {
+		font-size: 19px;
+		color: var(--text-muted);
+	}
+	.toc {
+		border-left: 2px solid var(--border-strong);
+		padding: 2px 0 2px 16px;
+		margin: 24px 0 32px;
+	}
+	.toc p {
+		font-family: var(--font-mono);
+		font-size: 12px;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--text-faint);
+		margin: 0 0 6px;
+	}
+	.toc ul {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		font-size: 15px;
+	}
+	.toc a {
+		color: var(--text-muted);
+		text-decoration: none;
+	}
+	.toc a:hover {
+		color: var(--spark);
+	}
+	.pager {
+		display: flex;
+		justify-content: space-between;
+		gap: 16px;
+		margin-top: 56px;
+		padding-top: 24px;
+		border-top: 1px solid var(--border);
+	}
+	.pager a {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding: 12px 16px;
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		text-decoration: none;
+		color: var(--text);
+		font-family: var(--font-mono);
+		font-size: 15px;
+		max-width: 48%;
+	}
+	.pager a:hover {
+		border-color: var(--border-strong);
+		background: var(--surface);
+	}
+	.pager span {
+		font-size: 12px;
+		color: var(--text-faint);
+	}
+	.pager .next {
+		margin-left: auto;
+		text-align: right;
+	}
+	.edit {
+		font-size: 14px;
+		margin-top: 20px;
+	}
+	.edit a {
+		color: var(--text-faint);
+	}
+	@media (max-width: 900px) {
+		.docs {
+			grid-template-columns: 1fr;
+			gap: 24px;
+			padding-top: 24px;
+		}
+		.sidebar details {
+			position: static;
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			padding: 12px 16px;
+		}
+		.sidebar summary {
+			display: block;
+			cursor: pointer;
+			font-family: var(--font-mono);
+			font-weight: 700;
+			margin-bottom: 12px;
+		}
+	}
+
+	/* Markdown body */
+	.prose :global(h2) {
+		font-size: 24px;
+		margin-top: 2.2em;
+		padding-top: 0.2em;
+	}
+	.prose :global(h3) {
+		font-size: 19px;
+		margin-top: 1.8em;
+	}
+	.prose :global(ul),
+	.prose :global(ol) {
+		padding-left: 1.3em;
+		margin: 0 0 1em;
+	}
+	.prose :global(li) {
+		margin: 0.3em 0;
+	}
+	.prose :global(table) {
+		width: 100%;
+		border-collapse: collapse;
+		margin: 0 0 1.5em;
+		font-size: 15px;
+		display: block;
+		overflow-x: auto;
+	}
+	.prose :global(th),
+	.prose :global(td) {
+		text-align: left;
+		padding: 8px 12px;
+		border-bottom: 1px solid var(--border);
+		vertical-align: top;
+	}
+	.prose :global(th) {
+		font-family: var(--font-mono);
+		font-size: 13px;
+		color: var(--text-muted);
+		border-bottom-color: var(--border-strong);
+	}
+	.prose :global(blockquote) {
+		margin: 0 0 1.2em;
+		padding: 12px 18px;
+		border-left: 3px solid var(--accent);
+		background: var(--surface);
+		border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+		color: var(--text-muted);
+	}
+	.prose :global(blockquote p:last-child) {
+		margin-bottom: 0;
+	}
+	.prose :global(pre) {
+		margin: 0 0 1.4em;
+	}
+	.prose :global(hr) {
+		border: 0;
+		border-top: 1px solid var(--border);
+		margin: 2.5em 0;
+	}
+</style>

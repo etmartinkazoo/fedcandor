@@ -1,6 +1,11 @@
+<p align="center"><img src="site/public/logo.svg" width="96" alt="fedcandor logo"></p>
+
 # fedcandor
 
-A stable, secure sway desktop for Fedora, for people who want to get things done.
+**Stable. Secure. Beautiful. No compromises.** A desktop for people who want to get things done:
+Fedora Atomic for stability and security, sway for productivity, and Quickshell for beauty.
+
+**Website & docs: <https://etmartinkazoo.github.io/fedcandor/>**
 
 - **Fedora** with fixed releases, SELinux enforcing, LUKS and firewalld, instead of a rolling distro.
 - **sway**: a mature, i3-compatible compositor that changes slowly.
@@ -41,6 +46,7 @@ steps/NN-*.sh        install steps, run in order
 packages/fedora.txt  dnf package list (also used by the Atomic image)
 dotfiles/<pkg>/      stow packages: sway, quickshell, foot, swappy, autostart, systemd, bin
 atomic/              bootc image: Containerfile, build script, first-login setup
+site/                website and docs (Astro); deployed to GitHub Pages
 ```
 
 ## Customizing

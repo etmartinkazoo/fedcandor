@@ -3,9 +3,9 @@ name: build-image
 on:
   push:
     branches: [main]
-    paths-ignore: ['**.md']
+    paths-ignore: ['**.md', 'site/**', '.github/workflows/site.yml']
   pull_request:
-    paths-ignore: ['**.md']
+    paths-ignore: ['**.md', 'site/**']
   schedule:
     - cron: '30 5 * * *'   # daily: pick up Fedora base image security updates
   workflow_dispatch:
