@@ -1,0 +1,452 @@
+#!/usr/bin/env bash
+#
+# firefox-debloat -- strip Firefox's home/new-tab bloat, kill telemetry and
+# "recommendation"/nag surfaces, turn off the built-in password manager (so a
+# real one wins), and make sure uBlock Origin + Bitwarden are installed and
+# enabled.
+#
+#   firefox-debloat                 apply to every default profile
+#   firefox-debloat --blank-newtab  make home + new tab blank pages
+#   firefox-debloat --no-extensions skip installing/enabling extensions
+#   firefox-debloat --policies      also write system policies.json (needs sudo)
+#   firefox-debloat --search-engine NAME   default engine (default: DuckDuckGo)
+#   firefox-debloat --revert        remove the managed prefs block (+ policies)
+#   firefox-debloat --dry-run       print actions without touching anything
+#
+# Profile prefs are written into a marked, idempotent block inside user.js, so
+# re-running only refreshes that block and leaves everything else alone.
+#
+# NOTE: the default *search engine* cannot be set from user.js (Firefox ignores
+# user-branch values of browser.search.defaultenginename by design). It is set
+# with the SearchEngines policy, which is only written by --policies.
+#
+set -euo pipefail
+
+MARK_BEGIN="// >>> firefox-debloat >>>"
+MARK_END="// <<< firefox-debloat <<<"
+
+UBO_ID="uBlock0@raymondhill.net"
+UBO_URL="https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi"
+BW_ID="{446900e4-71c2-419f-a6a7-df9c091e268b}"
+BW_URL="https://addons.mozilla.org/firefox/downloads/latest/bitwarden-password-manager/latest.xpi"
+
+POLICIES_PATH="/etc/firefox/policies/policies.json"
+POLICIES_MARK='"__firefox_debloat__": true,'
+POLICIES_STAGE="$HOME/.local/share/firefox-debloat/policies.json"
+
+SEARCH_ENGINE="DuckDuckGo"
+
+BLANK_NEWTAB=0
+WITH_EXTENSIONS=1
+WITH_POLICIES=0
+REVERT=0
+DRY_RUN=0
+ONLY_PROFILE=""
+
+log()  { printf '%s\n' "$*"; }
+warn() { printf 'WARN: %s\n' "$*" >&2; }
+run()  { if [ "$DRY_RUN" = 1 ]; then log "  [dry-run] $*"; else "$@"; fi; }
+
+usage() { sed -n '3,24p' "$0" | sed 's/^# \{0,1\}//'; }
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --blank-newtab)  BLANK_NEWTAB=1 ;;
+        --no-extensions) WITH_EXTENSIONS=0 ;;
+        --policies)      WITH_POLICIES=1 ;;
+        --revert)        REVERT=1 ;;
+        --dry-run)       DRY_RUN=1 ;;
+        --profile)       shift; ONLY_PROFILE="${1:-}" ;;
+        --search-engine) shift; SEARCH_ENGINE="${1:-DuckDuckGo}" ;;
+        -h|--help)       usage; exit 0 ;;
+        *) warn "unknown option: $1"; usage; exit 1 ;;
+    esac
+    shift
+done
+
+ff_root() {
+    if [ -d "$HOME/.config/mozilla/firefox" ]; then
+        echo "$HOME/.config/mozilla/firefox"
+    else
+        echo "$HOME/.mozilla/firefox"
+    fi
+}
+
+profiles() {
+    if [ -n "$ONLY_PROFILE" ]; then
+        echo "$ONLY_PROFILE"
+        return
+    fi
+    local root; root="$(ff_root)"
+    local p
+    for p in "$root"/*.default*; do
+        [ -d "$p" ] && echo "$p"
+    done
+}
+
+# ---------------------------------------------------------------- prefs block
+emit_prefs() {
+    cat <<'EOF'
+// --- home page / new tab: no sponsored, pocket, snippets, highlights ---
+EOF
+
+    if [ "$BLANK_NEWTAB" = 1 ]; then
+        # Blank home + new tab. Startup page is left alone so a
+        # "restore previous session" preference is preserved.
+        echo 'user_pref("browser.newtabpage.enabled", false);'
+        echo 'user_pref("browser.startup.homepage", "about:blank");'
+    else
+        echo 'user_pref("browser.newtabpage.enabled", true);'
+    fi
+    echo 'user_pref("browser.newtabpage.activity-stream.default.sites", "");'
+
+    cat <<'EOF'
+user_pref("browser.newtabpage.activity-stream.showSponsored", false);
+user_pref("browser.newtabpage.activity-stream.showSponsoredTopSites", false);
+user_pref("browser.newtabpage.activity-stream.showSponsoredCheckboxes", false);
+user_pref("browser.newtabpage.activity-stream.feeds.topsites", true);
+user_pref("browser.newtabpage.activity-stream.feeds.section.topstories", false);
+user_pref("browser.newtabpage.activity-stream.feeds.section.highlights", false);
+user_pref("browser.newtabpage.activity-stream.feeds.snippets", false);
+user_pref("browser.newtabpage.activity-stream.feeds.system.topstories", false);
+user_pref("browser.newtabpage.activity-stream.feeds.discoverystreamfeed", false);
+user_pref("browser.newtabpage.activity-stream.discoverystream.enabled", false);
+user_pref("browser.newtabpage.activity-stream.discoverystream.saveToPocketCard.enabled", false);
+user_pref("browser.newtabpage.activity-stream.discoverystream.sendToPocket.enabled", false);
+user_pref("browser.newtabpage.activity-stream.showWeather", false);
+user_pref("browser.newtabpage.activity-stream.prerender", false);
+user_pref("browser.newtabpage.activity-stream.topSitesRows", 1);
+user_pref("browser.newtabpage.activity-stream.section.highlights.includeVisited", false);
+user_pref("browser.newtabpage.activity-stream.section.highlights.includeBookmarks", false);
+user_pref("browser.newtabpage.activity-stream.section.highlights.includeDownloads", false);
+user_pref("browser.newtabpage.activity-stream.section.highlights.includePocket", false);
+user_pref("browser.newtabpage.activity-stream.section.highlights.includePinnedSites", false);
+
+// --- Pocket, entirely off ---
+user_pref("extensions.pocket.enabled", false);
+user_pref("extensions.pocket.showHome", false);
+user_pref("extensions.pocket.onSaveRecs", false);
+user_pref("extensions.pocket.onSaveRecs.locales", "");
+
+// --- urlbar / Firefox Suggest: keep history+bookmarks, drop the rest ---
+user_pref("browser.urlbar.quicksuggest.enabled", false);
+user_pref("browser.urlbar.quicksuggest.dataCollection.enabled", false);
+user_pref("browser.urlbar.suggest.quicksuggest.sponsored", false);
+user_pref("browser.urlbar.suggest.quicksuggest.nonsponsored", false);
+user_pref("browser.urlbar.suggest.searches", false);
+user_pref("browser.urlbar.suggest.topsites", false);
+user_pref("browser.urlbar.suggest.engines", false);
+user_pref("browser.urlbar.suggest.recentsearches", false);
+user_pref("browser.urlbar.suggest.weather", false);
+user_pref("browser.urlbar.suggest.trending", false);
+user_pref("browser.urlbar.suggest.pocket", false);
+user_pref("browser.urlbar.suggest.yelp", false);
+user_pref("browser.urlbar.suggest.mdn", false);
+user_pref("browser.urlbar.suggest.amp", false);
+user_pref("browser.urlbar.suggest.clipboard", false);
+user_pref("browser.urlbar.suggest.history", true);
+user_pref("browser.urlbar.suggest.bookmark", true);
+user_pref("browser.urlbar.suggest.openpage", true);
+user_pref("browser.urlbar.autoFill", false);
+user_pref("browser.urlbar.autoFill.adaptiveHistory.enabled", false);
+user_pref("browser.urlbar.groupLabels.enabled", false);
+user_pref("browser.urlbar.trimURLs", false);
+user_pref("browser.urlbar.showSearchTerms.enabled", false);
+user_pref("browser.search.suggest.enabled", false);
+user_pref("browser.search.suggest.enabled.private", false);
+
+// --- password manager off (Bitwarden owns this) + no form/pw suggestions ---
+user_pref("signon.rememberSignons", false);
+user_pref("signon.autofillForms", false);
+user_pref("signon.autofillForms.autocompleteOff", true);
+user_pref("signon.generation.enabled", false);
+user_pref("signon.management.page.breach-alerts.enabled", false);
+user_pref("signon.management.page.vulnerable-passwords.enabled", false);
+user_pref("signon.showAutoCompleteFooter", false);
+user_pref("signon.rememberSignons.visibilityToggle", false);
+user_pref("signon.firefoxRelay.feature", "disabled");
+user_pref("signon.firefoxRelay.showToAllBrowsers", false);
+user_pref("browser.formfill.enable", false);
+user_pref("extensions.formautofill.addresses.enabled", false);
+user_pref("extensions.formautofill.addresses.available", false);
+user_pref("extensions.formautofill.creditCards.enabled", false);
+user_pref("extensions.formautofill.creditCards.available", false);
+user_pref("extensions.formautofill.heuristics.enabled", false);
+
+// --- telemetry / studies / crash pings ---
+user_pref("toolkit.telemetry.enabled", false);
+user_pref("toolkit.telemetry.unified", false);
+user_pref("toolkit.telemetry.archive.enabled", false);
+user_pref("toolkit.telemetry.shutdownPingSender.enabled", false);
+user_pref("toolkit.telemetry.newProfilePing.enabled", false);
+user_pref("toolkit.telemetry.updatePing.enabled", false);
+user_pref("toolkit.telemetry.bhrPing.enabled", false);
+user_pref("toolkit.telemetry.firstShutdownPing.enabled", false);
+user_pref("toolkit.telemetry.coverage.opt-out", true);
+user_pref("toolkit.coverage.opt-out", true);
+user_pref("toolkit.coverage.endpoint.base", "");
+user_pref("datareporting.healthreport.uploadEnabled", false);
+user_pref("datareporting.policy.dataSubmissionEnabled", false);
+user_pref("browser.ping-centre.telemetry", false);
+user_pref("app.shield.optoutstudies.enabled", false);
+user_pref("app.normandy.enabled", false);
+user_pref("app.normandy.api_url", "");
+user_pref("browser.discovery.enabled", false);
+user_pref("browser.crashReports.unsubmittedCheck.autoSubmit2", false);
+user_pref("browser.tabs.crashReporting.sendReport", false);
+user_pref("beacon.enabled", false);
+user_pref("browser.region.network.url", "");
+user_pref("browser.region.update.enabled", false);
+
+// --- recommendations, onboarding, "what's new" nags ---
+user_pref("browser.newtabpage.activity-stream.asrouter.userprefs.cfr.addons", false);
+user_pref("browser.newtabpage.activity-stream.asrouter.userprefs.cfr.features", false);
+user_pref("browser.newtabpage.activity-stream.feeds.telemetry", false);
+user_pref("browser.newtabpage.activity-stream.telemetry", false);
+user_pref("browser.messaging-system.whatsNewPanel.enabled", false);
+user_pref("browser.messaging-system.survey.enabled", false);
+user_pref("browser.aboutwelcome.enabled", false);
+user_pref("browser.startup.homepage_override.mstone", "ignore");
+user_pref("browser.shell.checkDefaultBrowser", false);
+user_pref("browser.uitour.enabled", false);
+user_pref("extensions.getAddons.showPane", false);
+user_pref("extensions.htmlaboutaddons.recommendations.enabled", false);
+user_pref("extensions.htmlaboutaddons.discover.enabled", false);
+user_pref("browser.bookmarks.restore_default_bookmarks", false);
+
+// --- extensions: allow sideloaded ones to stay enabled ---
+user_pref("extensions.autoDisableScopes", 0);
+user_pref("extensions.update.enabled", true);
+EOF
+
+    cat <<EOF
+
+// --- search engine (default: $SEARCH_ENGINE) ---
+// The authoritative default engine is set by the SearchEngines policy (see
+// --policies). Firefox ignores user-branch values of defaultenginename by
+// design, so the pref below is best-effort only.
+user_pref("browser.search.defaultenginename", "$SEARCH_ENGINE");
+user_pref("browser.urlbar.placeholderName", "$SEARCH_ENGINE");
+user_pref("browser.urlbar.placeholderName.private", "$SEARCH_ENGINE");
+EOF
+}
+
+# ------------------------------------------------------------------ user.js
+write_userjs() {
+    local profile="$1" tmp="$2"
+    python3 - "$profile/user.js" "$MARK_BEGIN" "$MARK_END" "$tmp" <<'PY'
+import sys
+path, begin, end, block_path = sys.argv[1:5]
+try:
+    with open(path, "r", encoding="utf-8") as fh:
+        lines = fh.read().splitlines()
+except FileNotFoundError:
+    lines = []
+
+kept, skip = [], False
+for line in lines:
+    if line.strip() == begin:
+        skip = True
+        continue
+    if line.strip() == end:
+        skip = False
+        continue
+    if not skip:
+        kept.append(line)
+
+with open(block_path, "r", encoding="utf-8") as fh:
+    block = fh.read().rstrip("\n").splitlines()
+
+out = kept
+while out and out[-1] == "":
+    out.pop()
+if out:
+    out.append("")
+out.append(begin)
+out.extend(block)
+out.append(end)
+with open(path, "w", encoding="utf-8") as fh:
+    fh.write("\n".join(out) + "\n")
+PY
+}
+
+remove_userjs() {
+    local profile="$1"
+    python3 - "$profile/user.js" "$MARK_BEGIN" "$MARK_END" <<'PY'
+import sys, os
+path, begin, end = sys.argv[1:4]
+if not os.path.exists(path):
+    sys.exit(0)
+lines = open(path, encoding="utf-8").read().splitlines()
+kept, skip = [], False
+for line in lines:
+    if line.strip() == begin:
+        skip = True; continue
+    if line.strip() == end:
+        skip = False; continue
+    if not skip:
+        kept.append(line)
+while kept and kept[-1] == "":
+    kept.pop()
+open(path, "w", encoding="utf-8").write(("\n".join(kept) + "\n") if kept else "")
+PY
+}
+
+download_ext() {
+    local id="$1" url="$2" dest="$3"
+    if [ -s "$dest" ]; then
+        log "  already present: $(basename "$dest")"
+        return 0
+    fi
+    if [ "$DRY_RUN" = 1 ]; then
+        log "  [dry-run] curl -L $url -> $dest"
+        return 0
+    fi
+    log "  downloading $id ..."
+    if curl -fsSL --retry 3 --max-time 120 "$url" -o "$dest.part"; then
+        mv "$dest.part" "$dest"
+        log "  installed: $(basename "$dest")"
+    else
+        rm -f "$dest.part"
+        warn "could not download $id (offline?) -- install it from AMO manually"
+    fi
+}
+
+install_extensions() {
+    local profile="$1"
+    mkdir -p "$profile/extensions"
+    download_ext "$UBO_ID" "$UBO_URL" "$profile/extensions/$UBO_ID.xpi"
+    download_ext "$BW_ID"  "$BW_URL"  "$profile/extensions/$BW_ID.xpi"
+}
+
+# ------------------------------------------------------------------ policies
+write_policies() {
+    local json
+    json=$(cat <<EOF
+{
+  $POLICIES_MARK
+  "policies": {
+    "DisablePocket": true,
+    "DisableFirefoxStudies": true,
+    "DisableTelemetry": true,
+    "DisableFeedbackCommands": true,
+    "DontCheckDefaultBrowser": true,
+    "OverrideFirstRunPage": "",
+    "OverridePostUpdatePage": "",
+    "PasswordManagerEnabled": false,
+    "OfferToSaveLogins": false,
+    "SearchEngines": {
+      "Default": "$SEARCH_ENGINE",
+      "DefaultPrivate": "$SEARCH_ENGINE"
+    },
+    "ExtensionSettings": {
+      "$UBO_ID": {
+        "installation_mode": "force_installed",
+        "install_url": "$UBO_URL"
+      },
+      "$BW_ID": {
+        "installation_mode": "force_installed",
+        "install_url": "$BW_URL"
+      }
+    },
+    "FirefoxHome": {
+      "Search": true,
+      "TopSites": true,
+      "SponsoredTopSites": false,
+      "Highlights": false,
+      "Pocket": false,
+      "SponsoredPocket": false,
+      "Snippets": false,
+      "Locked": false
+    },
+    "Preferences": {
+      "browser.newtabpage.activity-stream.showSponsored": { "Value": false, "Status": "locked" },
+      "browser.newtabpage.activity-stream.showSponsoredTopSites": { "Value": false, "Status": "locked" },
+      "browser.urlbar.quicksuggest.enabled": { "Value": false, "Status": "locked" },
+      "browser.search.suggest.enabled": { "Value": false, "Status": "locked" },
+      "signon.rememberSignons": { "Value": false, "Status": "locked" },
+      "signon.autofillForms": { "Value": false, "Status": "locked" }
+    }
+  }
+}
+EOF
+)
+    log "Writing system policies -> $POLICIES_PATH (sudo)"
+    if [ "$DRY_RUN" = 1 ]; then
+        log "  [dry-run] write $POLICIES_PATH"
+        return 0
+    fi
+    if sudo -n true 2>/dev/null; then
+        sudo mkdir -p "$(dirname "$POLICIES_PATH")"
+        printf '%s\n' "$json" | sudo tee "$POLICIES_PATH" >/dev/null
+        log "  policies written"
+    else
+        mkdir -p "$(dirname "$POLICIES_STAGE")"
+        printf '%s\n' "$json" > "$POLICIES_STAGE"
+        log "  sudo needs a password here, so policies were STAGED instead:"
+        log "    $POLICIES_STAGE"
+        log "  Apply them with:"
+        log "    sudo mkdir -p $(dirname "$POLICIES_PATH") && sudo install -m 644 '$POLICIES_STAGE' '$POLICIES_PATH'"
+    fi
+}
+
+remove_policies() {
+    if [ -f "$POLICIES_PATH" ] && grep -q "$POLICIES_MARK" "$POLICIES_PATH"; then
+        log "Removing system policies <- $POLICIES_PATH (sudo)"
+        if [ "$DRY_RUN" = 1 ]; then
+            log "  [dry-run] sudo rm -f $POLICIES_PATH"
+        else
+            sudo rm -f "$POLICIES_PATH"
+        fi
+    fi
+}
+
+# --------------------------------------------------------------------- main
+main() {
+    local any=0
+    while IFS= read -r profile; do
+        [ -d "$profile" ] || continue
+        any=1
+        log "Profile: $profile"
+
+        if [ "$REVERT" = 1 ]; then
+            run remove_userjs "$profile"
+            log "  removed managed prefs block"
+            continue
+        fi
+
+        if [ "$WITH_EXTENSIONS" = 1 ]; then
+            if [ "$DRY_RUN" = 1 ]; then
+                log "  [dry-run] ensure uBlock Origin + Bitwarden in $profile/extensions"
+            else
+                install_extensions "$profile"
+            fi
+        fi
+
+        local tmp; tmp="$(mktemp)"
+        emit_prefs > "$tmp"
+        if [ "$DRY_RUN" = 1 ]; then
+            log "  [dry-run] write managed prefs block to $profile/user.js ($(grep -c user_pref "$tmp") prefs)"
+        else
+            write_userjs "$profile" "$tmp"
+            log "  wrote $(grep -c user_pref "$tmp") prefs -> $profile/user.js"
+        fi
+        rm -f "$tmp"
+    done < <(profiles)
+
+    [ "$any" = 1 ] || { warn "no Firefox profiles found"; exit 1; }
+
+    if [ "$REVERT" = 1 ]; then
+        [ "$WITH_POLICIES" = 1 ] && remove_policies
+        log "Done. Restart Firefox."
+        return
+    fi
+
+    [ "$WITH_POLICIES" = 1 ] && write_policies
+
+    log ""
+    log "Done. Restart Firefox for everything to take effect."
+    log "Extension IDs: uBO=$UBO_ID  Bitwarden=$BW_ID"
+}
+
+main

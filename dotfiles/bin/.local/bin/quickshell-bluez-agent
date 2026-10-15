@@ -1,0 +1,207 @@
+#!/usr/bin/env python3
+"""BlueZ pairing agent for Quickshell, deny-by-default.
+
+BlueZ refuses to pair without a registered agent and Quickshell doesn't provide
+one, so this registers a NoInputNoOutput agent as the default on the system bus.
+
+Security model: every request is REJECTED unless the device was explicitly
+allowed by Quickshell for a short window. Quickshell writes to our stdin:
+
+    allow AA:BB:CC:DD:EE:FF     user clicked "pair" on this device (90 s window)
+    revoke AA:BB:CC:DD:EE:FF    pairing finished / cancelled
+    clear                       drop all allowances
+
+so a nearby device can't pair (or open services) on its own, e.g. posing as a
+keyboard to inject keystrokes (CVE-2023-45866 class).
+
+Prints one line per D-Bus request to stdout so Quickshell can surface it.
+Exit codes: 0 clean, 1 fatal (agent could not register / bus error).
+"""
+
+import os
+import signal
+import sys
+import time
+
+import dbus
+import dbus.mainloop.glib
+import dbus.service
+from gi.repository import GLib
+
+AGENT_PATH = "/quickshell/bluez/agent"
+AGENT_IFACE = "org.bluez.Agent1"
+BLUEZ_SERVICE = "org.bluez"
+MANAGER_PATH = "/org/bluez"
+MANAGER_IFACE = "org.bluez.AgentManager1"
+CAPABILITY = "NoInputNoOutput"
+ALLOW_SECONDS = 90
+
+LOG_FILE = os.path.join(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")), "quickshell-bluez-agent.log")
+
+# MAC (upper case) -> monotonic expiry
+allowed = {}
+
+
+def log(*parts):
+    line = " ".join(str(p) for p in parts)
+    print(line, flush=True)  # -> Quickshell Process stdout
+    try:
+        os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+        with open(LOG_FILE, "a", encoding="utf-8") as fh:
+            fh.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {line}\n")
+    except OSError:
+        pass
+
+
+def mac_of(device_path):
+    """/org/bluez/hci0/dev_AA_BB_CC_DD_EE_FF -> AA:BB:CC:DD:EE:FF"""
+    node = str(device_path).rsplit("/", 1)[-1]
+    return node[4:].replace("_", ":").upper() if node.startswith("dev_") else ""
+
+
+def is_allowed(device_path):
+    mac = mac_of(device_path)
+    expiry = allowed.get(mac)
+    if expiry is None:
+        return False
+    if time.monotonic() > expiry:
+        allowed.pop(mac, None)
+        return False
+    return True
+
+
+class Rejected(dbus.DBusException):
+    _dbus_error_name = "org.bluez.Error.Rejected"
+
+
+def require_allowed(what, device):
+    if is_allowed(device):
+        log(what, mac_of(device), "-> accept (allowed by user)")
+        return
+    log(what, mac_of(device), "-> REJECT (not initiated from Quickshell)")
+    raise Rejected("Pairing not initiated by the user")
+
+
+class Agent(dbus.service.Object):
+    @dbus.service.method(AGENT_IFACE, in_signature="", out_signature="")
+    def Release(self):
+        log("Release()")
+
+    @dbus.service.method(AGENT_IFACE, in_signature="o", out_signature="s")
+    def RequestPinCode(self, device):
+        require_allowed("RequestPinCode", device)
+        return "0000"
+
+    @dbus.service.method(AGENT_IFACE, in_signature="o", out_signature="u")
+    def RequestPasskey(self, device):
+        require_allowed("RequestPasskey", device)
+        return dbus.UInt32(0)
+
+    @dbus.service.method(AGENT_IFACE, in_signature="os", out_signature="")
+    def DisplayPinCode(self, device, pincode):
+        log("DisplayPinCode", mac_of(device), str(pincode))
+
+    @dbus.service.method(AGENT_IFACE, in_signature="ouq", out_signature="")
+    def DisplayPasskey(self, device, passkey, entered):
+        log("DisplayPasskey", mac_of(device), str(passkey))
+
+    @dbus.service.method(AGENT_IFACE, in_signature="ou", out_signature="")
+    def RequestConfirmation(self, device, passkey):
+        require_allowed("RequestConfirmation", device)
+
+    @dbus.service.method(AGENT_IFACE, in_signature="o", out_signature="")
+    def RequestAuthorization(self, device):
+        require_allowed("RequestAuthorization", device)
+
+    @dbus.service.method(AGENT_IFACE, in_signature="os", out_signature="")
+    def AuthorizeService(self, device, uuid):
+        # BlueZ only asks for untrusted devices; trusted ones (set by
+        # Quickshell after a successful pairing) never reach this.
+        require_allowed("AuthorizeService " + str(uuid), device)
+
+    @dbus.service.method(AGENT_IFACE, in_signature="", out_signature="")
+    def Cancel(self):
+        log("Cancel()")
+
+
+class PairingAgent:
+    def __init__(self):
+        dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+        self.bus = dbus.SystemBus()
+        self.agent = Agent(self.bus, AGENT_PATH)
+        self.manager = dbus.Interface(
+            self.bus.get_object(BLUEZ_SERVICE, MANAGER_PATH), MANAGER_IFACE
+        )
+        self.loop = GLib.MainLoop()
+
+    def register(self):
+        try:
+            try:
+                self.manager.UnregisterAgent(AGENT_PATH)
+            except dbus.exceptions.DBusException:
+                pass
+            self.manager.RegisterAgent(AGENT_PATH, CAPABILITY)
+            self.manager.RequestDefaultAgent(AGENT_PATH)
+            log("agent ready:", AGENT_PATH, CAPABILITY, "(deny by default)")
+            return True
+        except dbus.exceptions.DBusException as exc:
+            log("agent register failed:", exc.get_dbus_name(), exc.get_dbus_message())
+            return False
+
+    def watchdog(self):
+        """bluetoothd may restart and drop us; keep ourselves the default."""
+        try:
+            self.manager.RequestDefaultAgent(AGENT_PATH)
+        except dbus.exceptions.DBusException as exc:
+            if "UnknownObject" in exc.get_dbus_name() or "ServiceUnknown" in exc.get_dbus_name():
+                return True  # bluetoothd down; try again next tick
+            log("agent lost, re-registering:", exc.get_dbus_message())
+            self.register()
+        return True
+
+    def on_stdin(self, source, condition):
+        if condition & (GLib.IO_HUP | GLib.IO_ERR):
+            # Quickshell went away: nothing can authorize pairings any more.
+            log("stdin closed, exiting")
+            self.stop()
+            return False
+        line = sys.stdin.readline()
+        if not line:
+            self.stop()
+            return False
+        parts = line.split()
+        if len(parts) == 2 and parts[0] == "allow":
+            allowed[parts[1].upper()] = time.monotonic() + ALLOW_SECONDS
+            log("allow", parts[1].upper(), f"for {ALLOW_SECONDS}s")
+        elif len(parts) == 2 and parts[0] == "revoke":
+            allowed.pop(parts[1].upper(), None)
+            log("revoke", parts[1].upper())
+        elif parts == ["clear"]:
+            allowed.clear()
+            log("clear")
+        return True
+
+    def stop(self, *_args):
+        try:
+            self.manager.UnregisterAgent(AGENT_PATH)
+        except Exception:
+            pass
+        self.loop.quit()
+
+    def run(self):
+        if not self.register():
+            return 1
+        signal.signal(signal.SIGTERM, self.stop)
+        signal.signal(signal.SIGINT, self.stop)
+        GLib.timeout_add_seconds(10, self.watchdog)
+        GLib.io_add_watch(sys.stdin.fileno(), GLib.IO_IN | GLib.IO_HUP | GLib.IO_ERR, self.on_stdin)
+        self.loop.run()
+        return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(PairingAgent().run())
+    except Exception as exc:  # noqa: BLE001 - report and die so Quickshell can retry
+        log("fatal:", exc)
+        sys.exit(1)

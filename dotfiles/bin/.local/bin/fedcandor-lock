@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Lock the session and return only once the lock is actually in place, so a
+# suspend can't race it (swayidle waits for this before sleeping).
+# Uses the Quickshell lock screen; falls back to swaylock if Quickshell is
+# missing or its lock doesn't become secure within 5 seconds.
+set -u
+
+if qs ipc call lock lock >/dev/null 2>&1; then
+    for _ in $(seq 50); do
+        [ "$(qs ipc call lock isSecure 2>/dev/null)" = "true" ] && exit 0
+        sleep 0.1
+    done
+fi
+
+exec swaylock -f -c 000000

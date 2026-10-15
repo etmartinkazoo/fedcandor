@@ -1,0 +1,51 @@
+# Packages fedcandor needs on Fedora (Workstation/Server/Everything installs).
+# On Fedora Atomic these are baked into the image instead (see atomic/).
+
+# Compositor & session
+sway
+sway-systemd
+swaybg
+swayidle
+swaylock                 # fallback locker if Quickshell isn't running
+xdg-desktop-portal-wlr
+xdg-desktop-portal-gtk
+xdg-utils
+
+# Shell
+quickshell
+python3                  # keybind cheatsheet, Bluetooth agent
+python3-dbus             # Bluetooth agent
+python3-gobject          # Bluetooth agent
+
+# Desktop tools used by the Quickshell plugins
+foot
+grim
+slurp
+jq
+wl-clipboard
+cliphist
+swappy
+wf-recorder
+wlsunset
+brightnessctl
+playerctl
+
+# System services the shell talks to
+pipewire
+wireplumber
+NetworkManager
+NetworkManager-wifi
+bluez
+upower
+power-profiles-daemon
+firewalld
+
+# Installer & dotfiles
+stow
+git
+curl
+tar
+xz
+unzip
+fontconfig
+glib2                    # gsettings

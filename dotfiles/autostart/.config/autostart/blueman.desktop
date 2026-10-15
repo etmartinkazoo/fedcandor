@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Blueman Applet
+Comment=Disabled by firefox-debloat/bluetooth fix: its KillSwitch plugin soft-blocks the adapter via rfkill
+Exec=blueman-applet
+Hidden=true
+X-GNOME-Autostart-enabled=false

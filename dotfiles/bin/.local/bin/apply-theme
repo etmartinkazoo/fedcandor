@@ -1,0 +1,262 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Receives theme colors from Quickshell's Theme.qml (single source of truth)
+BG_PANEL="${1:-#141d2b}"
+BG_ITEM="${2:-#0d1420}"
+BG_SELECTED="${3:-#1f3d6e}"
+BG_CRITICAL="${4:-#3a141c}"
+BORDER="${5:-#385a94}"
+BORDER_SUBTLE="${6:-#1f2e47}"
+BORDER_CRITICAL="${7:-#9e3344}"
+TEXT_PRIMARY="${8:-#f0f5ff}"
+TEXT_SECONDARY="${9:-#8fa8cc}"
+TEXT_MUTED="${10:-#6b82a6}"
+FONT_FAMILY="${11:-0xProto Nerd Font}"
+ICON_THEME="${12:-Tela-blue-dark}"
+
+strip_hash() {
+    echo "${1#\#}"
+}
+
+BG_PANEL_HEX=$(strip_hash "$BG_PANEL")
+BG_ITEM_HEX=$(strip_hash "$BG_ITEM")
+BG_SELECTED_HEX=$(strip_hash "$BG_SELECTED")
+BORDER_HEX=$(strip_hash "$BORDER")
+BORDER_CRITICAL_HEX=$(strip_hash "$BORDER_CRITICAL")
+TEXT_PRIMARY_HEX=$(strip_hash "$TEXT_PRIMARY")
+TEXT_SECONDARY_HEX=$(strip_hash "$TEXT_SECONDARY")
+TEXT_MUTED_HEX=$(strip_hash "$TEXT_MUTED")
+
+# 0. Icon theme (Tela from the fedcandor installer); fall back to Adwaita
+icon_theme_installed() {
+    local d
+    for d in "${XDG_DATA_HOME:-$HOME/.local/share}/icons" /usr/local/share/icons /usr/share/icons; do
+        [ -f "$d/$1/index.theme" ] && return 0
+    done
+    return 1
+}
+icon_theme_installed "$ICON_THEME" || ICON_THEME=Adwaita
+gsettings set org.gnome.desktop.interface icon-theme "$ICON_THEME" 2>/dev/null || true
+mkdir -p "$HOME/.config/gtk-3.0"
+cat > "$HOME/.config/gtk-3.0/settings.ini" <<EOF
+[Settings]
+gtk-application-prefer-dark-theme=1
+gtk-theme-name=Adwaita
+gtk-icon-theme-name=$ICON_THEME
+EOF
+
+# 1. Sway (live + persistent config.d drop-in)
+mkdir -p "$HOME/.config/sway/config.d"
+cat > "$HOME/.config/sway/config.d/99-theme.conf" <<EOF
+# Auto-generated from Quickshell Theme.qml
+client.focused          $BORDER $BG_PANEL $TEXT_PRIMARY $BORDER $BORDER
+client.focused_inactive $BORDER_SUBTLE $BG_ITEM $TEXT_SECONDARY $BORDER_SUBTLE $BORDER_SUBTLE
+client.unfocused        $BORDER_SUBTLE $BG_ITEM $TEXT_SECONDARY $BORDER_SUBTLE $BORDER_SUBTLE
+client.urgent           $BORDER_CRITICAL $BG_CRITICAL $TEXT_PRIMARY $BORDER_CRITICAL $BORDER_CRITICAL
+EOF
+
+if SWAYSOCK=$(ls /run/user/"$(id -u)"/sway-ipc.*.sock 2>/dev/null | head -n1) && [ -n "$SWAYSOCK" ]; then
+    SWAYSOCK="$SWAYSOCK" swaymsg \
+        "client.focused $BORDER $BG_PANEL $TEXT_PRIMARY $BORDER $BORDER; \
+         client.focused_inactive $BORDER_SUBTLE $BG_ITEM $TEXT_SECONDARY $BORDER_SUBTLE $BORDER_SUBTLE; \
+         client.unfocused $BORDER_SUBTLE $BG_ITEM $TEXT_SECONDARY $BORDER_SUBTLE $BORDER_SUBTLE; \
+         client.urgent $BORDER_CRITICAL $BG_CRITICAL $TEXT_PRIMARY $BORDER_CRITICAL $BORDER_CRITICAL" >/dev/null 2>&1 || true
+fi
+
+# 2. Foot Terminal (persistent ~/.config/foot/theme.ini + live OSC update to open terminals)
+mkdir -p "$HOME/.config/foot"
+cat > "$HOME/.config/foot/theme.ini" <<EOF
+# Auto-generated from Quickshell Theme.qml
+[colors-dark]
+background=$BG_ITEM_HEX
+foreground=$TEXT_PRIMARY_HEX
+selection-background=$BG_SELECTED_HEX
+selection-foreground=$TEXT_PRIMARY_HEX
+urls=$BORDER_HEX
+
+regular0=$BG_PANEL_HEX
+regular1=$BORDER_CRITICAL_HEX
+regular2=3fb950
+regular3=d29922
+regular4=$BORDER_HEX
+regular5=a371f7
+regular6=39c5cf
+regular7=$TEXT_SECONDARY_HEX
+
+bright0=$TEXT_MUTED_HEX
+bright1=ff7b72
+bright2=56d364
+bright3=e3b341
+bright4=58a6ff
+bright5=bc8cff
+bright6=56d4dd
+bright7=$TEXT_PRIMARY_HEX
+EOF
+
+# Live-update running foot terminals only: the ptys of foot's direct children.
+# (Writing to every /dev/pts would also hit tmux panes, ssh sessions, etc.)
+for foot_pid in $(pgrep -u "$(id -u)" -x foot); do
+    for child in $(pgrep -P "$foot_pid"); do
+        pts=$(readlink "/proc/$child/fd/0" 2>/dev/null) || continue
+        case "$pts" in /dev/pts/[0-9]*) ;; *) continue ;; esac
+        [ -w "$pts" ] || continue
+        printf '\033]11;#%s\007\033]10;#%s\007\033]12;#%s\007\033]17;#%s\007\033]19;#%s\007' \
+            "$BG_ITEM_HEX" "$TEXT_PRIMARY_HEX" "$TEXT_PRIMARY_HEX" "$BG_SELECTED_HEX" "$TEXT_PRIMARY_HEX" > "$pts" 2>/dev/null || true
+    done
+done
+
+# 3. Firefox
+#    a) theme.json  -> palette read by the bundled "Quickshell Theme Sync"
+#                      WebExtension. This is the SUPPORTED theming path and
+#                      covers chrome + menus + sidebar + the new tab page.
+#    b) userChrome.css -> version-robust overrides of Firefox's own design-token
+#                      custom properties only (no brittle #id/.class selectors,
+#                      whose churn is what breaks on Firefox updates).
+FF_DIR="$HOME/.config/mozilla/firefox"
+if [ ! -d "$FF_DIR" ] && [ -d "$HOME/.mozilla/firefox" ]; then
+    FF_DIR="$HOME/.mozilla/firefox"
+fi
+
+# --- 3a. WebExtension palette (source dir is live for temporary add-ons) ---
+EXT_DIR="$HOME/.config/quickshell/firefox-theme"
+mkdir -p "$EXT_DIR"
+cat > "$EXT_DIR/theme.json" <<EOF
+{
+  "colors": {
+    "frame": "$BG_PANEL",
+    "frame_inactive": "$BG_ITEM",
+    "toolbar": "$BG_PANEL",
+    "toolbar_text": "$TEXT_PRIMARY",
+    "toolbar_field": "$BG_ITEM",
+    "toolbar_field_text": "$TEXT_PRIMARY",
+    "toolbar_field_border": "$BORDER",
+    "toolbar_field_focus": "$BG_ITEM",
+    "toolbar_field_text_focus": "$TEXT_PRIMARY",
+    "toolbar_field_border_focus": "$BG_SELECTED",
+    "toolbar_field_highlight": "$BG_SELECTED",
+    "toolbar_field_highlight_text": "$TEXT_PRIMARY",
+    "toolbar_field_separator": "$BORDER",
+    "toolbar_top_separator": "$BORDER",
+    "toolbar_bottom_separator": "$BORDER",
+    "toolbar_vertical_separator": "$BORDER_SUBTLE",
+    "tab_text": "$TEXT_PRIMARY",
+    "tab_selected": "$BG_SELECTED",
+    "tab_line": "$BORDER",
+    "tab_loading": "$BORDER",
+    "tab_background_text": "$TEXT_SECONDARY",
+    "tab_background_separator": "$BORDER_SUBTLE",
+    "popup": "$BG_PANEL",
+    "popup_text": "$TEXT_PRIMARY",
+    "popup_border": "$BORDER",
+    "popup_highlight": "$BG_SELECTED",
+    "popup_highlight_text": "$TEXT_PRIMARY",
+    "sidebar": "$BG_PANEL",
+    "sidebar_text": "$TEXT_PRIMARY",
+    "sidebar_border": "$BORDER",
+    "sidebar_highlight": "$BG_SELECTED",
+    "sidebar_highlight_text": "$TEXT_PRIMARY",
+    "ntp_background": "$BG_ITEM",
+    "ntp_text": "$TEXT_PRIMARY",
+    "ntp_card_background": "$BG_PANEL",
+    "button_background_hover": "$BG_SELECTED",
+    "button_background_active": "$BG_SELECTED",
+    "icons": "$TEXT_PRIMARY",
+    "icons_attention": "$BG_SELECTED"
+  },
+  "properties": {
+    "color_scheme": "dark",
+    "content_color_scheme": "dark"
+  }
+}
+EOF
+
+# --- 3b. userChrome.css (stable design tokens only) + prefs ---
+if [ -d "$FF_DIR" ]; then
+    for profile in "$FF_DIR"/*.default*; do
+        [ -d "$profile" ] || continue
+        mkdir -p "$profile/chrome"
+
+        # Keep the stylesheet pref + dark scheme reproducible via user.js
+        touch "$profile/user.js"
+        if ! grep -q "toolkit.legacyUserProfileCustomizations.stylesheets" "$profile/user.js"; then
+            cat >> "$profile/user.js" <<EOF
+user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
+user_pref("layout.css.prefers-color-scheme.content-override", 0);
+user_pref("ui.systemUsesDarkTheme", 1);
+user_pref("browser.theme.content-theme", 0);
+user_pref("browser.theme.toolbar-theme", 0);
+EOF
+        fi
+
+        cat > "$profile/chrome/userChrome.css" <<EOF
+/* Auto-generated from Quickshell Theme.qml -- do not edit by hand.
+ *
+ * Version-robust strategy: override ONLY Firefox's own design-token custom
+ * properties. These are the variables Firefox's internal stylesheets consume,
+ * so they survive the DOM id/class churn that regularly breaks selector-based
+ * userChrome hacks (e.g. the Firefox 133 / 140 tab changes).
+ *
+ * Anything selector-based (#navigator-toolbox, .tab-background, #urlbar-background,
+ * ...) has intentionally been dropped: those are the parts that rot.
+ *
+ * The supported WebExtension "Quickshell Theme Sync" mirrors this same palette
+ * via the theme API (chrome + menus + sidebar + new tab page).
+ */
+
+:root {
+    /* hand-off tokens, for any custom rules you add yourself */
+    --qs-bg-panel: $BG_PANEL;
+    --qs-bg-item: $BG_ITEM;
+    --qs-bg-selected: $BG_SELECTED;
+    --qs-border: $BORDER;
+    --qs-border-subtle: $BORDER_SUBTLE;
+    --qs-text-primary: $TEXT_PRIMARY;
+    --qs-text-secondary: $TEXT_SECONDARY;
+    --qs-radius: 0px;
+
+    /* chrome surfaces */
+    --toolbar-bgcolor: $BG_PANEL !important;
+    --toolbar-color: $TEXT_PRIMARY !important;
+    --lwt-accent-color: $BG_ITEM !important;
+    --lwt-text-color: $TEXT_PRIMARY !important;
+
+    /* URL bar / search */
+    --toolbar-field-color: $TEXT_PRIMARY !important;
+    --toolbar-field-background-color: $BG_ITEM !important;
+    --toolbar-field-border-color: $BORDER !important;
+    --toolbar-field-focus-color: $TEXT_PRIMARY !important;
+    --toolbar-field-focus-background-color: $BG_ITEM !important;
+    --toolbar-field-focus-border-color: $BG_SELECTED !important;
+
+    /* tabs */
+    --tab-selected-bgcolor: $BG_SELECTED !important;
+    --tab-selected-textcolor: $TEXT_PRIMARY !important;
+    --lwt-selected-tab-background-color: $BG_SELECTED !important;
+    --tab-border-radius: 0px !important;
+
+    /* content area behind the tabs */
+    --tabpanel-background-color: $BG_ITEM !important;
+
+    /* menus / panels */
+    --arrowpanel-background: $BG_PANEL !important;
+    --arrowpanel-color: $TEXT_PRIMARY !important;
+    --arrowpanel-border-color: $BORDER !important;
+
+    /* sidebar */
+    --sidebar-background-color: $BG_PANEL !important;
+    --sidebar-text-color: $TEXT_PRIMARY !important;
+    --sidebar-border-color: $BORDER !important;
+
+    /* focus + corners */
+    --focus-outline-color: $BG_SELECTED !important;
+    --border-radius-small: 0px !important;
+    --border-radius-medium: 0px !important;
+    --border-radius-large: 0px !important;
+}
+EOF
+
+        # userContent.css is superseded by the extension's ntp_* theme colors
+        rm -f "$profile/chrome/userContent.css"
+    done
+fi

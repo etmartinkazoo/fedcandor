@@ -1,0 +1,15 @@
+# fedcandor: Fedora Sway Atomic + Quickshell as a bootable container image.
+#
+# Build:   podman build -f atomic/Containerfile -t fedcandor .
+# Use:     see atomic/README.md (rpm-ostree rebase / bootc switch)
+ARG FEDORA_VERSION=45
+FROM quay.io/fedora-ostree-desktops/sway-atomic:${FEDORA_VERSION}
+
+ARG IMAGE_REF=ghcr.io/etmartinkazoo/fedcandor
+ARG IMAGE_VERSION=dev
+
+COPY . /usr/share/fedcandor
+RUN IMAGE_REF="${IMAGE_REF}" IMAGE_VERSION="${IMAGE_VERSION}" \
+        /usr/share/fedcandor/atomic/build.sh \
+    && rm -rf /var/cache/* /var/log/* /tmp/* \
+    && bootc container lint

@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+#
+# Manage the "Quickshell Theme Sync" Firefox WebExtension.
+#
+#   firefox-theme build       package the source dir into an XPI
+#   firefox-theme sign        sign it (unlisted) via AMO -- needs API keys
+#   firefox-theme install     drop the newest signed XPI into every profile
+#   firefox-theme uninstall   remove the sideloaded XPI again
+#   firefox-theme temp        print how to load it temporarily (no signing)
+#   firefox-theme lint        validate the source dir
+#
+# Signing is the only way to make it permanent on Firefox *release*. Unsigned
+# extensions can otherwise only be loaded for the current session from
+# about:debugging ("Load Temporary Add-on").
+#
+set -euo pipefail
+
+SRC="${QS_FIREFOX_EXT_DIR:-$HOME/.config/quickshell/firefox-theme}"
+ART="${QS_FIREFOX_ART_DIR:-$HOME/.local/share/quickshell-firefox-theme}"
+EXT_ID="quickshell-theme@local"
+
+ff_dir() {
+    if [ -d "$HOME/.config/mozilla/firefox" ]; then
+        echo "$HOME/.config/mozilla/firefox"
+    else
+        echo "$HOME/.mozilla/firefox"
+    fi
+}
+
+profiles() {
+    local dir
+    dir="$(ff_dir)"
+    for p in "$dir"/*.default*; do
+        [ -d "$p" ] && echo "$p"
+    done
+}
+
+cmd_build() {
+    mkdir -p "$ART"
+    local xpi="$ART/$EXT_ID.xpi"
+    rm -f "$xpi"
+    ( cd "$SRC" && zip -r -FS "$xpi" . -x '.*' -x '*.md' -x '*/.*' >/dev/null )
+    echo "built: $xpi"
+}
+
+cmd_sign() {
+    : "${AMO_JWT_ISSUER:?set AMO_JWT_ISSUER to your AMO API key}"
+    : "${AMO_JWT_SECRET:?set AMO_JWT_SECRET to your AMO API secret}"
+    mkdir -p "$ART"
+    npx --yes web-ext sign \
+        --source-dir "$SRC" \
+        --artifacts-dir "$ART" \
+        --api-key "$AMO_JWT_ISSUER" \
+        --api-secret "$AMO_JWT_SECRET" \
+        --channel unlisted
+    echo "signed XPI(s) written to: $ART"
+}
+
+cmd_lint() {
+    npx --yes web-ext lint --source-dir "$SRC"
+}
+
+cmd_install() {
+    local xpi
+    xpi="$(ls -t "$ART"/*.xpi 2>/dev/null | head -n1 || true)"
+    if [ -z "$xpi" ]; then
+        echo "no XPI found in $ART -- run 'firefox-theme build' or 'firefox-theme sign' first" >&2
+        exit 1
+    fi
+    local any=0
+    while IFS= read -r profile; do
+        mkdir -p "$profile/extensions"
+        cp -f "$xpi" "$profile/extensions/$EXT_ID.xpi"
+        echo "installed $(basename "$xpi") -> $profile/extensions/$EXT_ID.xpi"
+        any=1
+    done < <(profiles)
+    [ "$any" = 1 ] || { echo "no Firefox profiles found" >&2; exit 1; }
+    echo
+    echo "Note: sideloaded add-ons may start disabled. Open about:addons and enable"
+    echo "\"Quickshell Theme Sync\" if it is listed as disabled."
+}
+
+cmd_uninstall() {
+    while IFS= read -r profile; do
+        rm -f "$profile/extensions/$EXT_ID.xpi"
+        echo "removed from $profile"
+    done < <(profiles)
+}
+
+cmd_temp() {
+    cat <<EOF
+Temporary load (no signing, lost when Firefox closes):
+
+  1. Open  about:debugging#/runtime/this-firefox
+  2. Click "Load Temporary Add-on..."
+  3. Select: $SRC/manifest.json
+
+Temporary add-ons read theme.json live from the source dir, so after
+'apply-theme' runs you only need to press "Reload" in about:debugging.
+
+Permanent install on Firefox release requires signing (see README in $SRC).
+EOF
+}
+
+usage() {
+    sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+case "${1:-}" in
+    build)     cmd_build ;;
+    sign)      cmd_sign ;;
+    install)   cmd_install ;;
+    uninstall) cmd_uninstall ;;
+    temp)      cmd_temp ;;
+    lint)      cmd_lint ;;
+    ""|-h|--help) usage ;;
+    *) echo "unknown command: $1" >&2; usage; exit 1 ;;
+esac
