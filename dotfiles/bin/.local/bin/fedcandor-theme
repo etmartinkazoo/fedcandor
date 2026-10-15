@@ -1,0 +1,538 @@
+#!/usr/bin/env python3
+"""fedcandor-theme: switch, install and render fedcandor themes.
+
+    fedcandor-theme list [--json]        installed themes (* = current)
+    fedcandor-theme current              print the current theme
+    fedcandor-theme set NAME             switch theme (applies live)
+    fedcandor-theme next | prev          cycle through themes
+    fedcandor-theme refresh              re-render the current theme
+    fedcandor-theme bg-next              next wallpaper of the current theme
+    fedcandor-theme wallpaper PATH       use your own wallpaper for every theme
+    fedcandor-theme wallpaper --clear    go back to the theme's wallpapers
+    fedcandor-theme install SOURCE       omarchy:NAME, a git URL, or a local folder
+    fedcandor-theme remove NAME          remove an installed (non built-in) theme
+
+Themes use Omarchy's colors.toml format, so Omarchy themes work as-is. Every
+color is validated as a hex value before it reaches any config: palette values
+end up in sway commands, so a theme must never be able to inject anything else.
+"""
+
+import argparse
+import glob
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import tomllib
+from pathlib import Path
+
+HOME = Path.home()
+XDG_DATA = Path(os.environ.get("XDG_DATA_HOME") or HOME / ".local/share")
+XDG_STATE = Path(os.environ.get("XDG_STATE_HOME") or HOME / ".local/state")
+XDG_CONFIG = Path(os.environ.get("XDG_CONFIG_HOME") or HOME / ".config")
+
+USER_THEMES = XDG_DATA / "fedcandor/themes"
+USER_TEMPLATES = XDG_CONFIG / "fedcandor/templates"
+STATE = XDG_STATE / "fedcandor/theme"
+DEFAULT_THEME = "candor"
+OMARCHY_REPO = "https://github.com/omacom/omarchy.git"
+
+HEX = re.compile(r"^#[0-9A-Fa-f]{6}([0-9A-Fa-f]{2})?$")
+NAME = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp"}
+
+
+def die(msg):
+    print(f"fedcandor-theme: {msg}", file=sys.stderr)
+    sys.exit(1)
+
+
+def warn(msg):
+    print(f"fedcandor-theme: {msg}", file=sys.stderr)
+
+
+def repo_root():
+    """The fedcandor checkout (via this script's symlink) or the Atomic image copy."""
+    env = os.environ.get("FEDCANDOR_ROOT")
+    if env:
+        return Path(env)
+    for parent in Path(__file__).resolve().parents:
+        if (parent / "themes").is_dir() and (parent / "templates").is_dir():
+            return parent
+    return Path("/usr/share/fedcandor")
+
+
+ROOT = repo_root()
+
+
+# ---------------------------------------------------------------- themes ----
+
+def themes():
+    """name -> (dir, source). User themes override built-in ones of the same name."""
+    found = {}
+    for base, source in ((ROOT / "themes", "built-in"), (USER_THEMES, "installed")):
+        if base.is_dir():
+            for d in sorted(base.iterdir()):
+                if (d / "colors.toml").is_file() and NAME.match(d.name):
+                    found[d.name] = (d, source)
+    return found
+
+
+def theme_dir(name):
+    t = themes().get(name)
+    if not t:
+        die(f"no theme named '{name}' (see: fedcandor-theme list)")
+    return t[0]
+
+
+def current():
+    try:
+        name = (STATE / "current").read_text().strip()
+        if name in themes():
+            return name
+    except OSError:
+        pass
+    return DEFAULT_THEME
+
+
+def backgrounds(d):
+    bg = d / "backgrounds"
+    if not bg.is_dir():
+        return []
+    return sorted(p for p in bg.iterdir() if p.suffix.lower() in IMAGE_EXT and p.is_file())
+
+
+# --------------------------------------------------------------- palette ----
+
+def mix(a, b, amount):
+    if isinstance(amount, str):
+        amount = float(amount.rstrip("%")) / 100 if amount.endswith("%") else float(amount)
+    if amount > 1:
+        amount /= 100
+    amount = max(0.0, min(1.0, amount))
+    a, b = a.lstrip("#")[:6], b.lstrip("#")[:6]
+    out = []
+    for i in (0, 2, 4):
+        x, y = int(a[i:i + 2], 16), int(b[i:i + 2], 16)
+        out.append(int(x * (1 - amount) + y * amount + 0.5))
+    return "#%02x%02x%02x" % tuple(out)
+
+
+def load_palette(d):
+    """Parse and validate colors.toml, then resolve it like Omarchy's resolver."""
+    try:
+        raw = tomllib.loads((d / "colors.toml").read_text())
+    except (OSError, tomllib.TOMLDecodeError) as e:
+        die(f"{d.name}: can't read colors.toml: {e}")
+
+    c = {}
+    for key, value in raw.items():
+        if key in ("mode", "theme_type"):
+            if value in ("dark", "light"):
+                c[key] = value
+        elif isinstance(value, str) and HEX.match(value.strip()):
+            c[key] = value.strip().lower()
+        # anything else (gradients, rgba(), stray text) is ignored on purpose
+
+    def alias(key, src):
+        if key not in c and src in c:
+            c[key] = c[src]
+
+    for key, short in (("background", "bg"), ("dark_background", "dark_bg"), ("darker_background", "darker_bg"),
+                       ("lighter_background", "lighter_bg"), ("foreground", "fg"), ("dark_foreground", "dark_fg"),
+                       ("light_foreground", "light_fg"), ("bright_foreground", "bright_fg")):
+        alias(key, short)
+    alias("background", "color0")
+    alias("foreground", "color7")
+    if "background" not in c or "foreground" not in c:
+        die(f"{d.name}: colors.toml needs at least 'background' and 'foreground' hex colors")
+    for key, n in (("red", 1), ("green", 2), ("yellow", 3), ("blue", 4), ("magenta", 5), ("cyan", 6),
+                   ("bright_red", 9), ("bright_green", 10), ("bright_yellow", 11), ("bright_blue", 12),
+                   ("bright_magenta", 13), ("bright_cyan", 14)):
+        alias(key, f"color{n}")
+    alias("magenta", "purple")
+    alias("bright_magenta", "bright_purple")
+    defaults = {"red": "#cc6666", "green": "#8fbc6b", "yellow": "#e0c060", "blue": "#6f9cf2",
+                "magenta": "#b392f0", "cyan": "#56b6c2"}
+    for key, value in defaults.items():
+        c.setdefault(key, value)
+
+    c.setdefault("light_foreground", c.get("color7", c["foreground"]))
+    c.setdefault("bright_foreground", c.get("color15", c["foreground"]))
+    c["cursor"] = c["bright_foreground"]
+    c.setdefault("lighter_background", c.get("color0", c["background"]))
+    c.setdefault("dark_foreground", c.get("color8", c["foreground"]))
+    c.setdefault("muted", c.get("color8", c["dark_foreground"]))
+    c.setdefault("selection", c.get("selection_background", c.get("color8", c["background"])))
+    c.setdefault("selection_background", c["selection"])
+    c.setdefault("selection_foreground", c["bright_foreground"])
+    c.setdefault("orange", c["yellow"])
+    c.setdefault("brown", mix(c["orange"], "#000000", 0.5))
+    c.setdefault("accent", c["blue"])
+    c.setdefault("dark_background", mix(c["background"], "#000000", 0.25))
+    c.setdefault("darker_background", mix(c["background"], "#000000", 0.5))
+    for key in ("red", "yellow", "green", "cyan", "blue", "magenta"):
+        c.setdefault(f"bright_{key}", mix(c[key], "#ffffff", 0.2))
+    c.setdefault("purple", c["magenta"])
+    c.setdefault("bright_purple", c["bright_magenta"])
+
+    if "mode" not in c:
+        if "theme_type" in c:
+            c["mode"] = c["theme_type"]
+        elif (d / "light.mode").exists():
+            c["mode"] = "light"
+        else:
+            bg = c["background"].lstrip("#")
+            c["mode"] = "light" if sum(int(bg[i:i + 2], 16) for i in (0, 2, 4)) > 382 else "dark"
+    c["name"] = d.name
+    return c
+
+
+# ------------------------------------------------------------- templates ----
+
+TOKEN = re.compile(r"\{\{\s*([^{}]+?)\s*\}\}")
+
+
+def render(text, c):
+    def value(match):
+        parts = match.group(1).split()
+        if len(parts) == 4 and parts[0] in ("mix", "mix_strip", "mix_rgb"):
+            fn, a, b, amount = parts
+            if HEX.match(c.get(a, "")) and HEX.match(c.get(b, "")):
+                v = mix(c[a], c[b], amount)
+                return v[1:] if fn == "mix_strip" else (rgb(v) if fn == "mix_rgb" else v)
+            return match.group(0)
+        if len(parts) != 1:
+            return match.group(0)
+        key = parts[0]
+        if key in c:
+            return c[key]
+        for suffix, fn in (("_strip", lambda v: v.lstrip("#")), ("_rgb", rgb)):
+            if key.endswith(suffix) and key[: -len(suffix)] in c and HEX.match(c[key[: -len(suffix)]]):
+                return fn(c[key[: -len(suffix)]])
+        return match.group(0)
+
+    return TOKEN.sub(value, text)
+
+
+def rgb(v):
+    v = v.lstrip("#")
+    return ",".join(str(int(v[i:i + 2], 16)) for i in (0, 2, 4))
+
+
+def templates():
+    found = {}
+    for base in (ROOT / "templates", USER_TEMPLATES):  # user templates override built-ins
+        if base.is_dir():
+            for f in sorted(base.glob("*.tpl")):
+                found[f.name[:-4]] = f
+    return found
+
+
+def write(path, text):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text)
+    os.replace(tmp, path)
+
+
+# -------------------------------------------------------------- applying ----
+
+def sway(*commands):
+    if not commands:
+        return
+    env = dict(os.environ)
+    if not env.get("SWAYSOCK"):
+        socks = glob.glob(f"/run/user/{os.getuid()}/sway-ipc.*.sock")
+        if not socks:
+            return
+        env["SWAYSOCK"] = socks[0]
+    subprocess.run(["swaymsg", "; ".join(commands)], env=env, capture_output=True)
+
+
+def foot_live(c):
+    """Recolor running foot terminals: only the ptys of foot's direct children."""
+    seq = "".join(f"\033]4;{i};{c[k]}\007" for i, k in enumerate(
+        ["background", "red", "green", "yellow", "blue", "magenta", "cyan", "foreground",
+         "muted", "bright_red", "bright_green", "bright_yellow", "bright_blue", "bright_magenta",
+         "bright_cyan", "bright_foreground"]))
+    seq += (f"\033]10;{c['foreground']}\007\033]11;{c['background']}\007"
+            f"\033]12;{c['bright_foreground']}\007\033]17;{c['selection_background']}\007"
+            f"\033]19;{c['selection_foreground']}\007")
+    try:
+        feet = subprocess.run(["pgrep", "-u", str(os.getuid()), "-x", "foot"], capture_output=True, text=True).stdout.split()
+    except OSError:
+        return
+    for pid in feet:
+        children = subprocess.run(["pgrep", "-P", pid], capture_output=True, text=True).stdout.split()
+        for child in children:
+            try:
+                pts = os.readlink(f"/proc/{child}/fd/0")
+                if re.match(r"^/dev/pts/\d+$", pts):
+                    with open(pts, "w") as fh:
+                        fh.write(seq)
+            except OSError:
+                pass
+
+
+def icon_theme_installed(name):
+    for base in (XDG_DATA / "icons", Path("/usr/local/share/icons"), Path("/usr/share/icons")):
+        if (base / name / "index.theme").is_file():
+            return True
+    return False
+
+
+def apply_gtk(d, c):
+    dark = c["mode"] == "dark"
+    wanted = []
+    try:
+        wanted.append((d / "icons.theme").read_text().strip())
+    except OSError:
+        pass
+    wanted += ["Tela-dark" if dark else "Tela-light", "Tela", "Adwaita"]
+    icons = next((w for w in wanted if w and re.match(r"^[\w.-]+$", w) and icon_theme_installed(w)), "Adwaita")
+    for key, value in (("color-scheme", "prefer-dark" if dark else "prefer-light"), ("icon-theme", icons)):
+        subprocess.run(["gsettings", "set", "org.gnome.desktop.interface", key, value], capture_output=True)
+    ini = (f"[Settings]\ngtk-application-prefer-dark-theme={1 if dark else 0}\n"
+           f"gtk-theme-name=Adwaita\ngtk-icon-theme-name={icons}\n")
+    for version in ("gtk-3.0", "gtk-4.0"):
+        write(XDG_CONFIG / version / "settings.ini", ini)
+
+
+FIREFOX_PREFS = """user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
+user_pref("browser.theme.content-theme", 2);
+user_pref("browser.theme.toolbar-theme", 2);
+"""
+
+
+def apply_firefox(rendered):
+    ext = XDG_CONFIG / "quickshell/firefox-theme"
+    if "firefox-theme.json" in rendered and (ext / "manifest.json").exists():
+        write(ext / "theme.json", rendered["firefox-theme.json"])
+    if "userChrome.css" not in rendered:
+        return
+    for ff in (XDG_CONFIG / "mozilla/firefox", HOME / ".mozilla/firefox"):
+        if not ff.is_dir():
+            continue
+        for profile in ff.glob("*.default*"):
+            if not profile.is_dir():
+                continue
+            write(profile / "chrome/userChrome.css", rendered["userChrome.css"])
+            user_js = profile / "user.js"
+            existing = user_js.read_text() if user_js.exists() else ""
+            if "toolkit.legacyUserProfileCustomizations.stylesheets" not in existing:
+                with open(user_js, "a") as fh:
+                    fh.write(FIREFOX_PREFS)
+        break
+
+
+def wallpaper_for(name, d):
+    override = STATE / "wallpaper-override"
+    if override.exists():
+        path = override.read_text().strip()
+        if Path(path).is_file():
+            return path
+    bgs = backgrounds(d)
+    if not bgs:
+        return ""
+    index = load_json(STATE / "backgrounds.json").get(name, 0)
+    return str(bgs[index % len(bgs)])
+
+
+def load_json(path):
+    try:
+        return json.loads(path.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def apply(name):
+    d = theme_dir(name)
+    c = load_palette(d)
+    rendered = {out: render(tpl.read_text(), c) for out, tpl in templates().items()}
+    for out, text in rendered.items():
+        write(STATE / "rendered" / out, text)
+
+    # Quickshell watches this file and recolors live.
+    if "quickshell.json" in rendered:
+        data = json.loads(rendered["quickshell.json"])
+        data["wallpaper"] = wallpaper_for(name, d)
+        write(STATE / "quickshell.json", json.dumps(data, indent=2) + "\n")
+
+    if "sway.conf" in rendered:
+        write(XDG_CONFIG / "sway/config.d/99-theme.conf", rendered["sway.conf"])
+        sway(*[l.strip() for l in rendered["sway.conf"].splitlines() if l.startswith("client.")])
+
+    if "foot.ini" in rendered:
+        write(XDG_CONFIG / "foot/theme.ini", rendered["foot.ini"])
+        foot_live(c)
+
+    apply_gtk(d, c)
+    apply_firefox(rendered)
+    write(STATE / "current", name + "\n")
+
+
+# --------------------------------------------------------------- install ----
+
+def install(source, name=None):
+    with tempfile.TemporaryDirectory(prefix="fedcandor-theme-") as tmp:
+        tmp = Path(tmp)
+        if source.startswith("omarchy:"):
+            theme = source.split(":", 1)[1]
+            if not NAME.match(theme):
+                die(f"invalid Omarchy theme name: {theme}")
+            run(["git", "clone", "--quiet", "--depth", "1", "--filter=blob:none", "--sparse", OMARCHY_REPO, str(tmp / "repo")])
+            run(["git", "-C", str(tmp / "repo"), "sparse-checkout", "set", f"themes/{theme}"])
+            src = tmp / "repo/themes" / theme
+            name = name or theme
+        elif re.match(r"^(https://|git@)", source):
+            run(["git", "clone", "--quiet", "--depth", "1", source, str(tmp / "repo")])
+            src = tmp / "repo"
+            name = name or re.sub(r"(\.git|-theme)$", "", source.rstrip("/").rsplit("/", 1)[-1]).removeprefix("omarchy-")
+        else:
+            src = Path(source).expanduser()
+            name = name or src.name
+        name = name.lower()
+        if not NAME.match(name):
+            die(f"invalid theme name: {name} (use --name)")
+        if not (src / "colors.toml").is_file():
+            die(f"{source}: no colors.toml found (older Omarchy themes without one aren't supported)")
+        load_palette(src)  # validate before installing
+
+        dest = USER_THEMES / name
+        if dest.exists():
+            shutil.rmtree(dest)
+        dest.mkdir(parents=True)
+        shutil.copy2(src / "colors.toml", dest / "colors.toml")
+        if (src / "icons.theme").is_file():
+            shutil.copy2(src / "icons.theme", dest / "icons.theme")
+        if (src / "light.mode").exists():
+            (dest / "light.mode").touch()
+        copied = 0
+        for bg in backgrounds(src):
+            if bg.stat().st_size > 30 * 1024 * 1024:
+                warn(f"skipping oversized wallpaper {bg.name}")
+                continue
+            (dest / "backgrounds").mkdir(exist_ok=True)
+            target = dest / "backgrounds" / bg.name
+            if bg.suffix.lower() == ".webp" and not qt_webp():
+                if shutil.which("magick"):
+                    target = target.with_suffix(".jpg")
+                    run(["magick", str(bg), "-quality", "90", str(target)])
+                else:
+                    warn(f"{bg.name}: .webp wallpapers need qt6-qtimageformats (or ImageMagick to convert)")
+                    continue
+            else:
+                shutil.copy2(bg, target)
+            copied += 1
+    print(f"installed '{name}' ({copied} wallpaper{'s' if copied != 1 else ''}) — apply with: fedcandor-theme set {name}")
+
+
+def qt_webp():
+    return bool(glob.glob("/usr/lib*/qt6/plugins/imageformats/libqwebp.so"))
+
+
+def run(cmd):
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        die(f"{' '.join(cmd[:3])} failed: {r.stderr.strip()}")
+
+
+# ------------------------------------------------------------------- cli ----
+
+def main():
+    p = argparse.ArgumentParser(prog="fedcandor-theme", description=__doc__.split("\n\n")[0])
+    sub = p.add_subparsers(dest="cmd", required=True)
+    ls = sub.add_parser("list")
+    ls.add_argument("--json", action="store_true")
+    sub.add_parser("current")
+    s = sub.add_parser("set")
+    s.add_argument("name")
+    sub.add_parser("next")
+    sub.add_parser("prev")
+    sub.add_parser("refresh")
+    sub.add_parser("bg-next")
+    w = sub.add_parser("wallpaper")
+    w.add_argument("path", nargs="?")
+    w.add_argument("--clear", action="store_true")
+    i = sub.add_parser("install")
+    i.add_argument("source")
+    i.add_argument("--name")
+    r = sub.add_parser("remove")
+    r.add_argument("name")
+    a = p.parse_args()
+
+    all_themes = themes()
+    names = list(all_themes)
+
+    if a.cmd == "list":
+        cur = current()
+        if a.json:
+            out = []
+            for n, (d, source) in all_themes.items():
+                c = load_palette(d)
+                bgs = backgrounds(d)
+                out.append({
+                    "name": n, "source": source, "current": n == cur, "mode": c["mode"],
+                    "preview": str(bgs[0]) if bgs else "",
+                    "colors": {k: c[k] for k in ("background", "dark_background", "foreground", "accent",
+                                                 "red", "yellow", "green", "blue", "magenta", "cyan")},
+                })
+            print(json.dumps(out))
+        else:
+            for n, (d, source) in all_themes.items():
+                print(f"{'*' if n == cur else ' '} {n:<20} {load_palette(d)['mode']:<6} {source}")
+    elif a.cmd == "current":
+        print(current())
+    elif a.cmd == "set":
+        apply(a.name)
+    elif a.cmd in ("next", "prev"):
+        if not names:
+            die("no themes found")
+        cur = current()
+        idx = names.index(cur) if cur in names else -1
+        apply(names[(idx + (1 if a.cmd == "next" else -1)) % len(names)])
+    elif a.cmd == "refresh":
+        apply(current())
+    elif a.cmd == "bg-next":
+        name = current()
+        bgs = backgrounds(theme_dir(name))
+        if bgs:
+            state = load_json(STATE / "backgrounds.json")
+            state[name] = (state.get(name, 0) + 1) % len(bgs)
+            write(STATE / "backgrounds.json", json.dumps(state) + "\n")
+        apply(name)
+    elif a.cmd == "wallpaper":
+        override = STATE / "wallpaper-override"
+        if a.clear:
+            override.unlink(missing_ok=True)
+        elif a.path:
+            path = Path(a.path).expanduser().resolve()
+            if not path.is_file() or path.suffix.lower() not in IMAGE_EXT:
+                die(f"not an image file: {a.path}")
+            write(override, str(path) + "\n")
+        else:
+            print(override.read_text().strip() if override.exists() else "(theme wallpapers)")
+            return
+        apply(current())
+    elif a.cmd == "install":
+        install(a.source, a.name)
+    elif a.cmd == "remove":
+        d = USER_THEMES / a.name
+        if not NAME.match(a.name) or not d.is_dir():
+            die(f"'{a.name}' isn't an installed theme (built-in themes can't be removed)")
+        try:
+            was_current = (STATE / "current").read_text().strip() == a.name
+        except OSError:
+            was_current = False
+        shutil.rmtree(d)
+        if was_current:
+            apply(a.name if a.name in themes() else DEFAULT_THEME)  # a built-in of the same name, or the default
+        print(f"removed '{a.name}'")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,32 @@
+# graphite: quiet, neutral and low-distraction. Near-black with soft grey accents.
+mode = "dark"
+
+accent = "#b4b4b4"
+selection = "#2e2e2e"
+muted = "#5c5c5c"
+
+background = "#1a1a1a"
+dark_background = "#121212"
+darker_background = "#0b0b0b"
+lighter_background = "#242424"
+
+foreground = "#cfcfcf"
+dark_foreground = "#7a7a7a"
+light_foreground = "#e0e0e0"
+bright_foreground = "#ececec"
+
+red = "#e06c75"
+yellow = "#e5c07b"
+orange = "#d19a66"
+green = "#98c379"
+cyan = "#56b6c2"
+blue = "#7fa7d9"
+magenta = "#c678dd"
+brown = "#7a5a3c"
+
+bright_red = "#ef8a92"
+bright_yellow = "#f0d197"
+bright_green = "#b1d898"
+bright_cyan = "#7ccbd5"
+bright_blue = "#9fc0e8"
+bright_magenta = "#d797e8"

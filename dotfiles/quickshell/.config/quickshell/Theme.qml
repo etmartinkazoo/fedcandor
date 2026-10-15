@@ -1,68 +1,73 @@
 pragma Singleton
 import QtQuick
 import Quickshell
+import Quickshell.Io
 
+// Colors come from the active fedcandor theme: `fedcandor-theme` renders
+// templates/quickshell.json.tpl into ~/.local/state/fedcandor/theme/quickshell.json
+// and this singleton watches that file, so theme switches apply live.
 Singleton {
     id: theme
 
-    // Active palette: "win11" (Windows 11 Dark) or "graphite" (Original Dark).
-    // Persisted in ShellState so it survives restarts.
-    readonly property string currentTheme: palettes[ShellState.settings.theme] ? ShellState.settings.theme : "win11"
+    readonly property string cli: Quickshell.env("HOME") + "/.local/bin/fedcandor-theme"
+    readonly property string statePath: (Quickshell.env("XDG_STATE_HOME") || Quickshell.env("HOME") + "/.local/state")
+        + "/fedcandor/theme/quickshell.json"
 
-    readonly property var palettes: ({
-        "win11": {
-            label: "Windows 11 Dark",
-            iconTheme: "Tela-blue-dark",
-            bgOverlay: "#a0050a14",
-            bgPanel: "#141d2b",
-            bgItem: "#0d1420",
-            bgSelected: "#1f3d6e",
-            bgCritical: "#3a141c",
-            border: "#385a94",
-            borderSubtle: "#1f2e47",
-            borderCritical: "#9e3344",
-            textPrimary: "#f0f5ff",
-            textSecondary: "#8fa8cc",
-            textMuted: "#6b82a6",
-            textPlaceholder: "#566b8c"
-        },
-        "graphite": {
-            label: "Graphite Dark",
-            iconTheme: "Tela-grey-dark",
-            bgOverlay: "#a0000000",
-            bgPanel: "#1a1a1a",
-            bgItem: "#121212",
-            bgSelected: "#2e2e2e",
-            bgCritical: "#2d1212",
-            border: "#444444",
-            borderSubtle: "#2a2a2a",
-            borderCritical: "#7a2f2f",
-            textPrimary: "#e0e0e0",
-            textSecondary: "#888888",
-            textMuted: "#777777",
-            textPlaceholder: "#666666"
+    property var palette: ({})
+
+    FileView {
+        path: theme.statePath
+        watchChanges: true
+        printErrors: false
+        onFileChanged: reload()
+        onLoaded: {
+            try {
+                theme.palette = JSON.parse(text());
+            } catch (e) {
+                // Mid-write or malformed: keep the previous palette.
+            }
         }
-    })
+        // First run: nothing rendered yet.
+        onLoadFailed: Quickshell.execDetached([theme.cli, "refresh"])
+    }
 
-    readonly property var active: palettes[currentTheme] || palettes["win11"]
+    function pick(key, fallback) {
+        const v = palette[key];
+        return v !== undefined && v !== "" ? v : fallback;
+    }
+
+    readonly property string currentTheme: pick("name", "candor")
+    readonly property bool isLight: palette.mode === "light"
+    readonly property string wallpaper: pick("wallpaper", "")
 
     // Colors - Surfaces
-    readonly property color bgOverlay: active.bgOverlay
-    readonly property color bgPanel: active.bgPanel
-    readonly property color bgItem: active.bgItem
-    readonly property color bgSelected: active.bgSelected
-    readonly property color bgCritical: active.bgCritical
+    readonly property color bgOverlay: pick("bgOverlay", "#b3090e17")
+    readonly property color bgPanel: pick("bgPanel", "#141d2b")
+    readonly property color bgItem: pick("bgItem", "#0d1420")
+    readonly property color bgSelected: pick("bgSelected", "#1f3d6e")
+    readonly property color bgCritical: pick("bgCritical", "#3a141c")
 
     // Colors - Borders
-    readonly property color border: active.border
-    readonly property color borderSubtle: active.borderSubtle
-    readonly property color borderCritical: active.borderCritical
+    readonly property color border: pick("border", "#385a94")
+    readonly property color borderSubtle: pick("borderSubtle", "#1f2e47")
+    readonly property color borderCritical: pick("borderCritical", "#ff7b72")
 
     // Colors - Text
-    readonly property color textPrimary: active.textPrimary
-    readonly property color textSecondary: active.textSecondary
-    readonly property color textMuted: active.textMuted
-    readonly property color textPlaceholder: active.textPlaceholder
+    readonly property color textPrimary: pick("textPrimary", "#f0f5ff")
+    readonly property color textSecondary: pick("textSecondary", "#8fa8cc")
+    readonly property color textMuted: pick("textMuted", "#6b82a6")
+    readonly property color textPlaceholder: pick("textPlaceholder", "#566b8c")
+
+    // Colors - Palette (wallpaper, accents)
+    readonly property color accent: pick("accent", "#6f9cf2")
+    readonly property color background: pick("background", "#141d2b")
+    readonly property color darkerBackground: pick("darkerBackground", "#090e17")
+    readonly property color red: pick("red", "#ff7b72")
+    readonly property color green: pick("green", "#5fd08a")
+    readonly property color yellow: pick("yellow", "#e3b341")
+    readonly property color blue: pick("blue", "#6f9cf2")
+    readonly property color magenta: pick("magenta", "#b392f0")
+    readonly property color cyan: pick("cyan", "#39c5cf")
 
     // Typography
     readonly property string fontFamily: "0xProto Nerd Font"
@@ -84,40 +89,15 @@ Singleton {
     readonly property int spacingMedium: 8
     readonly property int spacingLarge: 12
 
-    function syncExternalApps() {
-        Quickshell.execDetached([
-            Quickshell.env("HOME") + "/.local/bin/apply-theme",
-            active.bgPanel,
-            active.bgItem,
-            active.bgSelected,
-            active.bgCritical,
-            active.border,
-            active.borderSubtle,
-            active.borderCritical,
-            active.textPrimary,
-            active.textSecondary,
-            active.textMuted,
-            fontFamily,
-            active.iconTheme
-        ]);
-    }
-
-    // Sync once the saved theme is known, then on every change.
-    onCurrentThemeChanged: if (ShellState.settingsLoaded) syncExternalApps()
-
-    Connections {
-        target: ShellState
-        function onSettingsLoadedChanged() {
-            if (ShellState.settingsLoaded) theme.syncExternalApps();
-        }
-    }
-
     function setTheme(name) {
-        if (!palettes[name]) return;
-        ShellState.settings.theme = name;
+        Quickshell.execDetached([cli, "set", name]);
     }
 
-    function toggleTheme() {
-        setTheme(currentTheme === "win11" ? "graphite" : "win11");
+    function nextTheme() {
+        Quickshell.execDetached([cli, "next"]);
+    }
+
+    function nextBackground() {
+        Quickshell.execDetached([cli, "bg-next"]);
     }
 }

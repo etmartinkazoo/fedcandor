@@ -54,4 +54,5 @@ Forget the network (select it and press <kbd>F</kbd>), then connect again. Netwo
 fc-list | grep -i 0xproto                         # the font is installed
 gsettings get org.gnome.desktop.interface icon-theme
 cd ~/fedcandor && ./install.sh fonts icons        # Workstation: reinstall them
+fedcandor-theme refresh                           # re-apply the theme everywhere
 ```

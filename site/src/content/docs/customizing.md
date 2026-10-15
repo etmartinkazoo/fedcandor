@@ -37,9 +37,7 @@ above the binding becomes its description.
 
 ## Themes
 
-Click the theme button in the bar (or run `qs ipc call theme toggle`). One switch recolors the
-shell, window borders, open terminals, GTK icons and Firefox. Two themes ship today: **Windows 11
-Dark** (blue) and **Graphite** (neutral).
+Five themes ship built in, and any Omarchy theme installs with one command. See [Themes](../themes/).
 
 ## Changing the desktop itself
 
@@ -63,8 +61,10 @@ On Atomic, the login setup sees your checkout and leaves your links alone.
 
 ## What not to edit
 
-Files that are **generated**: they're rewritten whenever you switch theme.
+Files that are **generated**: `fedcandor-theme` rewrites them whenever you switch theme.
 
 - `~/.config/sway/config.d/99-theme.conf`
 - `~/.config/foot/theme.ini`
-- `~/.config/gtk-3.0/settings.ini`
+- `~/.config/gtk-3.0/settings.ini` and `~/.config/gtk-4.0/settings.ini`
+
+To change what they contain, override the template instead (see [Themes](../themes/#making-a-theme)).

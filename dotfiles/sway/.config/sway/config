@@ -96,6 +96,9 @@ input "type:touchpad" {
 
     # Power & session menu
     bindsym $mod+Shift+e exec qs ipc call power open
+
+    # Theme picker
+    bindsym $mod+Shift+t exec qs ipc call theme picker
 #
 # Moving around:
 #

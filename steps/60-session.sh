@@ -16,6 +16,10 @@ CONF
     ok "created $local_conf"
 fi
 
+# Render the current theme (candor on first run) for sway, foot, GTK, Quickshell.
+"$HOME/.local/bin/fedcandor-theme" refresh || warn "fedcandor-theme refresh failed"
+ok "theme: $("$HOME/.local/bin/fedcandor-theme" current)"
+
 systemctl --user daemon-reload
 systemctl --user enable quickshell.service >/dev/null
 ok "quickshell.service enabled (starts with the sway session)"

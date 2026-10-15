@@ -76,7 +76,7 @@ locked even if the shell were to crash.
 
 - **Night light**: warm color temperature with presets and fine tuning; remembered across reboots.
 - **Caffeine**: keeps the screen from sleeping during a presentation.
-- **Themes**: switching recolors the shell, window borders, terminals, GTK icons (Tela) and Firefox.
+- **Themes**: five built in, plus any Omarchy theme; one switch recolors everything. See [Themes](../themes/).
 - **Polkit dialog**: a themed password prompt when an app needs administrator rights.
 - **System tray**: icons and menus for apps that provide them.
 - **Keybinding cheatsheet**: <kbd>Super</kbd>+<kbd>/</kbd>, generated from your live sway configuration.

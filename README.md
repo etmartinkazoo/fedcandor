@@ -43,6 +43,8 @@ For **Fedora Atomic**, see [atomic/README.md](atomic/README.md).
 install.sh           entry point
 lib/common.sh        shared helpers (logging, verified downloads)
 steps/NN-*.sh        install steps, run in order
+themes/              built-in themes (Omarchy-compatible colors.toml + wallpapers)
+templates/           theme templates: rendered for Quickshell, sway, foot, GTK, Firefox
 packages/fedora.txt  dnf package list (also used by the Atomic image)
 dotfiles/<pkg>/      stow packages: sway, quickshell, foot, swappy, autostart, systemd, bin
 atomic/              bootc image: Containerfile, build script, first-login setup
@@ -53,9 +55,12 @@ site/                website and docs (Astro); deployed to GitHub Pages
 
 - **Per-machine sway settings** (wallpaper, keyboard options, output scaling) go in
   `~/.config/sway/config.d/80-local.conf`. It isn't tracked; `install.sh` creates a template.
+- **Themes**: five built in (`themes/`), plus any [Omarchy](https://github.com/omacom/omarchy)
+  theme via `fedcandor-theme install omarchy:<name>`. Switch with <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd>
+  or `fedcandor-theme set <name>`. See [themes/README.md](themes/README.md).
 - **Generated files** aren't tracked: `sway/config.d/99-theme.conf`, `foot/theme.ini`,
-  `gtk-3.0/settings.ini` and `quickshell/firefox-theme/theme.json` all come from `apply-theme`,
-  which runs whenever you switch theme in the bar.
+  `gtk-*/settings.ini` and `quickshell/firefox-theme/theme.json` are rendered from `templates/`
+  by `fedcandor-theme` on every theme change.
 - **Everything else** is a symlink into this repo: edit it here, then commit.
 
 ## Operating

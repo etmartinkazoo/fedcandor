@@ -81,7 +81,7 @@ Scope {
 
         WlSessionLockSurface {
             id: surface
-            color: Theme.bgItem
+            color: Theme.darkerBackground
 
             Rectangle {
                 anchors.centerIn: parent

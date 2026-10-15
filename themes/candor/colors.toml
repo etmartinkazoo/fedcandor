@@ -1,0 +1,32 @@
+# candor: fedcandor's signature theme. Deep navy, clear blue accent.
+mode = "dark"
+
+accent = "#6f9cf2"
+selection = "#1f3d6e"
+muted = "#566b8c"
+
+background = "#141d2b"
+dark_background = "#0d1420"
+darker_background = "#090e17"
+lighter_background = "#1c2a40"
+
+foreground = "#c9d6ee"
+dark_foreground = "#6b82a6"
+light_foreground = "#dbe4f5"
+bright_foreground = "#f0f5ff"
+
+red = "#ff7b72"
+yellow = "#e3b341"
+orange = "#f0883e"
+green = "#5fd08a"
+cyan = "#39c5cf"
+blue = "#6f9cf2"
+magenta = "#b392f0"
+brown = "#7a4e2d"
+
+bright_red = "#ffa198"
+bright_yellow = "#f2cc60"
+bright_green = "#7ee2a8"
+bright_cyan = "#56d4dd"
+bright_blue = "#a9c4ff"
+bright_magenta = "#d2a8ff"

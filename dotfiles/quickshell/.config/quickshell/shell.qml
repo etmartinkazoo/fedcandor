@@ -41,11 +41,8 @@ ShellRoot {
     LockScreen { id: lockScreen }
     Polkit { id: polkitAgent }
 
-    IpcHandler {
-        target: "theme"
-        function toggle() { Theme.toggleTheme(); }
-        function set(name: string) { Theme.setTheme(name); }
-    }
+    Wallpaper {}
+    ThemePicker { id: themePicker }
 
     // One bar per monitor
     Variants {
@@ -250,9 +247,11 @@ ShellRoot {
                         }
 
                         BarButton {
+                            id: themeBtn
                             text: "󰔎"
-                            dim: Theme.currentTheme !== "win11"
-                            onLeftClicked: Theme.toggleTheme()
+                            highlighted: themePicker.active
+                            onLeftClicked: ShellState.togglePopup("themes", bar.screen)
+                            onRightClicked: Theme.nextTheme()
                         }
 
                         BarButton {

@@ -23,6 +23,7 @@ searchable cheatsheet, generated live from your sway configuration.
 | <kbd>Print</kbd> or <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> | Screenshot and screen recording |
 | <kbd>Super</kbd>+<kbd>N</kbd> | Notification center |
 | <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> | Power menu: lock, suspend, log out, reboot, power off |
+| <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd> | Theme picker |
 
 ## Windows and layouts
 
@@ -61,7 +62,7 @@ The bar runs along the bottom of every screen.
 | Bluetooth | Devices | Right-click toggles power |
 | Night light | Color temperature | Right-click toggles |
 | Caffeine | Keep the screen awake | |
-| Theme | Switch theme | |
+| Theme | Theme picker | Right-click: next theme |
 | Clipboard | Clipboard history | |
 | Camera | Screenshot tool | |
 | Bell | Notification center | Right-click toggles Do Not Disturb |

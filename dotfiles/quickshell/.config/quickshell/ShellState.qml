@@ -65,7 +65,6 @@ Singleton {
 
         JsonAdapter {
             id: adapter
-            property string theme: "win11"
             property bool dnd: false
             property bool nightLight: false
             property int nightLightTemp: 4000
