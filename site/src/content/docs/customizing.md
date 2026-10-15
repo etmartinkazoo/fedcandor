@@ -64,6 +64,8 @@ On Atomic, the login setup sees your checkout and leaves your links alone.
 Files that are **generated**: `fedcandor-theme` rewrites them whenever you switch theme.
 
 - `~/.config/sway/config.d/99-theme.conf`
+- `~/.config/kitty/theme.conf` (put your own kitty tweaks in `~/.config/kitty/local.conf`)
+- `~/.config/nvim/colors/fedcandor.lua`
 - `~/.config/foot/theme.ini`
 - `~/.config/gtk-3.0/settings.ini` and `~/.config/gtk-4.0/settings.ini`
 
