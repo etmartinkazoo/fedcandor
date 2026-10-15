@@ -75,7 +75,8 @@ Singleton {
         JsonAdapter {
             id: adapter
             property bool dnd: false
-            property bool nightLight: false
+            property bool nightLight: false      // legacy; superseded by nightLightMode
+            property string nightLightMode: ""    // "off" | "auto" | "on"
             property int nightLightTemp: 4000
             // { "<app name>": { count: n, last: epochMs } }
             property var launchStats: ({})

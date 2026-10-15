@@ -54,7 +54,7 @@ The bar runs along the bottom of every screen.
 | Item | Click | Other |
 |------|-------|-------|
 | App tray icons | Activate | Right-click for the app's menu |
-| **Quick settings** (cog) | Theme, brightness, night light, keep awake, Do Not Disturb, and the screenshot, clipboard and shortcut tools | Shows a cup while keep awake is on, and a crossed bell in Do Not Disturb |
+| **Quick settings** (cog) | Theme, brightness, warmth (night light: off/auto/on), keep awake, Do Not Disturb, and the screenshot, clipboard and shortcut tools | Shows a cup while keep awake is on, and a crossed bell in Do Not Disturb |
 | Volume | Audio mixer | Right-click mutes · scroll to adjust · shows a crossed mic when the microphone is muted |
 | Wi-Fi | Networks & DNS | |
 | Bluetooth | Devices | Right-click toggles power |

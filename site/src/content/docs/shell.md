@@ -64,9 +64,13 @@ mute, and a microphone mute indicator. Volume, mic and brightness keys show an o
 ## Quick settings
 
 The cog in the bar gathers appearance and everyday toggles in one place: the current theme (click
-for the [theme picker](../themes/)), screen brightness, **night light** (with warmth presets and a
-slider), **keep awake** (stops the screen sleeping during a presentation), **Do Not Disturb**, and
+for the [theme picker](../themes/)), screen brightness, **warmth** (night light: Off, Auto or On,
+with a slider), **keep awake** (stops the screen sleeping during a presentation), **Do Not Disturb**, and
 one-click access to the screenshot tool, clipboard history and the shortcut cheatsheet.
+
+**Auto** warmth follows the sun: warm from sunset to sunrise, neutral by day. The times are worked
+out from your timezone's coordinates in the system's timezone database, so no location service is
+involved and nothing leaves your machine. If the timezone can't be mapped, Auto uses 19:00–07:00.
 
 ## System
 

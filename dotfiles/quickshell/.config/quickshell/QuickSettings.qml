@@ -64,7 +64,7 @@ Scope {
             Keys.onRightPressed: if (qs.brightness >= 0) qs.setBrightness(qs.brightness + 5)
             Keys.onPressed: function(event) {
                 switch (event.key) {
-                case Qt.Key_N: qs.nightLight.toggleEnabled(); break;
+                case Qt.Key_N: qs.nightLight.cycleMode(); break;
                 case Qt.Key_A: qs.caffeine.toggle(); break;
                 case Qt.Key_D: ShellState.settings.dnd = !ShellState.settings.dnd; break;
                 case Qt.Key_T: qs.openTool("themes"); break;
@@ -157,21 +157,51 @@ Scope {
                 }
             }
 
+            // Warmth (night light): directly under brightness
+            Column {
+                width: parent.width
+                spacing: 6
+                RowLayout {
+                    width: parent.width
+                    Caption {
+                        text: (qs.nightLight.enabled ? "󰖔" : "󰖙") + "  WARMTH [N]"
+                        Layout.fillWidth: true
+                    }
+                    Repeater {
+                        model: [{ mode: "off", label: "OFF" }, { mode: "auto", label: "AUTO" }, { mode: "on", label: "ON" }]
+                        delegate: SmallButton {
+                            required property var modelData
+                            text: modelData.label
+                            highlighted: qs.nightLight.mode === modelData.mode
+                            onClicked: qs.nightLight.setMode(modelData.mode)
+                        }
+                    }
+                }
+                Meter {
+                    width: parent.width
+                    height: 14
+                    interactive: true
+                    opacity: qs.nightLight.enabled ? 1 : 0.45
+                    // 6000K (left, neutral) .. 2500K (right, warm)
+                    value: (6000 - qs.nightLight.temperature) / 3500
+                    onMoved: function(v) { qs.nightLight.setTemp(Math.round((6000 - v * 3500) / 50) * 50); }
+                }
+                RowLayout {
+                    width: parent.width
+                    Caption {
+                        text: qs.nightLight.modeText
+                        Layout.fillWidth: true
+                    }
+                    Caption { text: qs.nightLight.temperature + "K" }
+                }
+            }
+
             // Toggles
             Row {
                 width: parent.width
                 spacing: Theme.spacingMedium
-                readonly property real w: (width - spacing * 2) / 3
+                readonly property real w: (width - spacing) / 2
 
-                OptionTile {
-                    width: parent.w
-                    height: 82
-                    icon: qs.nightLight.enabled ? "󰖔" : "󰖙"
-                    label: "Night light [N]"
-                    sublabel: qs.nightLight.enabled ? qs.nightLight.temperature + "K" : "Off"
-                    selected: qs.nightLight.enabled
-                    onClicked: qs.nightLight.toggleEnabled()
-                }
                 OptionTile {
                     width: parent.w
                     height: 82
@@ -189,34 +219,6 @@ Scope {
                     sublabel: ShellState.settings.dnd ? "Only critical" : "Off"
                     selected: ShellState.settings.dnd
                     onClicked: ShellState.settings.dnd = !ShellState.settings.dnd
-                }
-            }
-
-            // Night light temperature (only while it's on)
-            Column {
-                width: parent.width
-                spacing: 4
-                visible: qs.nightLight.enabled
-                RowLayout {
-                    width: parent.width
-                    Caption { text: "WARMTH"; Layout.fillWidth: true }
-                    Repeater {
-                        model: qs.nightLight.presets
-                        delegate: SmallButton {
-                            required property var modelData
-                            text: modelData.desc
-                            highlighted: qs.nightLight.temperature === modelData.temp
-                            onClicked: qs.nightLight.setTemp(modelData.temp)
-                        }
-                    }
-                }
-                Meter {
-                    width: parent.width
-                    height: 10
-                    interactive: true
-                    // 6000K (left, neutral) .. 2500K (right, warm)
-                    value: (6000 - qs.nightLight.temperature) / 3500
-                    onMoved: function(v) { qs.nightLight.setTemp(Math.round((6000 - v * 3500) / 50) * 50); }
                 }
             }
 
