@@ -49,3 +49,12 @@ xz
 unzip
 fontconfig
 glib2                    # gsettings
+
+# Dictation (steps/75-dictation.sh builds whisper.cpp)
+wtype                    # types the transcribed text into the focused window
+gcc-c++
+cmake
+vulkan-headers           # whisper.cpp on the GPU (Vulkan)
+vulkan-loader-devel
+glslc
+spirv-headers-devel

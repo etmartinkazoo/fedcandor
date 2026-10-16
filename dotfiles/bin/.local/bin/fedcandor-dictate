@@ -1,0 +1,507 @@
+#!/usr/bin/env python3
+"""fedcandor-dictate: speak, and the words are typed into the focused window.
+
+    fedcandor-dictate press      key down: start listening (or stop, if latched)
+    fedcandor-dictate release    key up: transcribe and type, unless it was a tap
+    fedcandor-dictate toggle     start, or stop and type
+    fedcandor-dictate cancel     stop listening and throw the audio away
+
+For the settings app (Quickshell's Dictation window):
+    fedcandor-dictate status             JSON: what's installed, models, settings
+    fedcandor-dictate install            install packages (via pkexec) and build whisper.cpp
+    fedcandor-dictate download MODEL     download and verify a model
+    fedcandor-dictate set KEY VALUE      change a setting in dictation.conf
+    fedcandor-dictate test [SECONDS]     record, transcribe, print JSON (nothing is typed)
+
+Hold the key to talk; a quick tap latches it on, and the next press stops it.
+Speech is transcribed locally with whisper.cpp (nothing leaves the machine) and
+typed with wtype. Quickshell shows a pill while listening/transcribing.
+
+Model and options: ~/.config/fedcandor/dictation.conf (KEY=value lines):
+    MODEL=small.en          base.en | small.en | large-v3-turbo-q5_0 | a path to a ggml model
+    LANGUAGE=en             or auto (needs a multilingual model, without .en)
+    THREADS=0               0 = all cores
+    SOURCE=                 microphone (a PipeWire node name; empty = the default)
+    OUTPUT=type             type | clipboard | both
+    SPACE=yes               add a space after each dictation
+    COMMANDS=yes            voice commands, instead of typing: "text Sarah I'm on my way" drafts a
+                            text in the phone panel for you to approve; "call Sarah" calls her
+                            after a 3-second countdown you can cancel
+"""
+
+import json
+
+import os
+import re
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+HOME = Path.home()
+RUN = Path(os.environ.get("XDG_RUNTIME_DIR") or f"/tmp/fedcandor-{os.getuid()}") / "fedcandor-dictate"
+DATA = Path(os.environ.get("XDG_DATA_HOME") or HOME / ".local/share") / "fedcandor/whisper"
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME") or HOME / ".config") / "fedcandor/dictation.conf"
+WHISPER = HOME / ".local/bin/whisper-cli"
+
+AUDIO = RUN / "speech.wav"
+PID = RUN / "recorder.pid"
+STARTED = RUN / "started"      # monotonic ms when recording began
+LATCHED = RUN / "latched"      # a tap turned it on: the next press stops it
+LOCK = RUN / "lock"
+LEVEL = RUN / "level"          # microphone level 0..1, ~20 times a second (the pill's meter)
+
+PACKAGES = ["wtype", "gcc-c++", "cmake", "git", "vulkan-headers", "vulkan-loader-devel", "glslc", "spirv-headers-devel"]
+# name -> (sha256, bytes, description)
+MODELS = {
+    "base.en": ("a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002", 147964211,
+                "Fastest. Fine for short, clear phrases."),
+    "small.en": ("c6138d6d58ecc8322097e0f987c32f1be8bb0a18532a3f88f734d1bbf9c41e5d", 487614201,
+                 "Balanced. Good accuracy, still quick."),
+    "large-v3-turbo-q5_0": ("394221709cd5ad1f40c46e6031ca61bce88931e6e088c188294c6d5a55ffa7e2", 574041195,
+                            "Most accurate, and multilingual. Slower without a GPU."),
+}
+SETTINGS = {"MODEL", "LANGUAGE", "THREADS", "SOURCE", "OUTPUT", "SPACE", "COMMANDS"}
+
+# "text Sarah …", "message Sarah …", "send a text to Sarah …", "send Sarah a text …"
+VOICE_TEXT = re.compile(
+    r"^(?:please\s+|hey\s+)?(?:"
+    r"send\s+(?:a\s+)?(?:text|message|sms)\s+(?:message\s+)?to"
+    r"|(?:text|message)(?:\s+to)?"
+    r")[\s,:]+(?P<rest>.+)$", re.I | re.S)
+
+# "call Sarah", "call Sarah Martin", "phone Brady": the whole utterance, a name of
+# at most 3 words, so dictating "call me when you can" still types.
+VOICE_CALL = re.compile(r"^(?:please\s+|hey\s+)?(?:call|phone|dial|ring)\s+(?P<name>[^\s,.!?]+(?:\s+[^\s,.!?]+){0,2})[.!?]?$", re.I)
+NOT_NAMES = {"me", "you", "him", "her", "them", "us", "it", "back", "this", "that", "a", "the", "my", "your", "off", "out", "up"}
+
+TAP_MS = 350                   # shorter than this between press and release = a tap
+MIN_AUDIO_MS = 400             # less than this isn't speech
+MAX_SECONDS = 300              # recording stops itself after 5 minutes
+
+# Whisper's markers for silence and noise, not words.
+NOISE = re.compile(r"\[[^\]]*\]|\([^)]*(music|silence|blank|noise|inaudible)[^)]*\)", re.I)
+
+
+def config():
+    c = {"MODEL": "small.en", "LANGUAGE": "en", "THREADS": "0", "SOURCE": "", "OUTPUT": "type", "SPACE": "yes",
+         "COMMANDS": "yes"}
+    try:
+        for line in CONFIG.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                c[k.strip().upper()] = v.strip().strip('"')
+    except OSError:
+        pass
+    return c
+
+
+def model_path(name):
+    p = Path(name).expanduser()
+    if p.is_file():
+        return p
+    return DATA / "models" / f"ggml-{name}.bin"
+
+
+def shell(*args, wait=True):
+    """Tell Quickshell's pill what's happening (best effort)."""
+    cmd = ["qs", "ipc", "call", "dictation", *args]
+    if wait:
+        subprocess.run(cmd, capture_output=True, timeout=3)
+    else:
+        subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def now_ms():
+    return int(time.monotonic() * 1000)
+
+
+def recorder_pid():
+    try:
+        pid = int(PID.read_text())
+        os.kill(pid, 0)
+        return pid
+    except (OSError, ValueError):
+        return None
+
+
+def clear():
+    for f in (PID, STARTED, LATCHED):
+        f.unlink(missing_ok=True)
+
+
+def start():
+    if recorder_pid():
+        return
+    # The pill first, without waiting: it should appear the moment the key goes down.
+    shell("listening", "held", wait=False)
+    clear()
+    AUDIO.unlink(missing_ok=True)
+    proc = subprocess.Popen(
+        [sys.executable, __file__, "_record", str(AUDIO)],
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        start_new_session=True)
+    PID.write_text(str(proc.pid))
+    STARTED.write_text(str(now_ms()))
+    # A watchdog so a lost key release can't record forever.
+    subprocess.Popen([sys.executable, __file__, "_watchdog", str(proc.pid)],
+                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                     start_new_session=True)
+
+
+def record(path):
+    """The recorder: pw-record streams raw audio to us, we write the WAV and
+    publish the level for the pill's meter. SIGINT/SIGTERM end it cleanly."""
+    import array
+    import math
+    import wave
+
+    stop = False
+
+    def on_signal(*_):
+        nonlocal stop
+        stop = True
+
+    signal.signal(signal.SIGINT, on_signal)
+    signal.signal(signal.SIGTERM, on_signal)
+    rec = subprocess.Popen(record_cmd("-") , stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    chunk = 16000 // 20 * 2          # 50 ms of 16 kHz mono s16
+    with wave.open(str(path), "wb") as out:
+        out.setnchannels(1)
+        out.setsampwidth(2)
+        out.setframerate(16000)
+        while not stop:
+            data = rec.stdout.read(chunk)
+            if not data:
+                break
+            out.writeframes(data)
+            samples = array.array("h", data[: len(data) // 2 * 2])
+            rms = math.sqrt(sum(x * x for x in samples) / max(1, len(samples)))
+            # -60 dBFS (silence) .. 0 dBFS (loud) -> 0..1
+            level = max(0.0, min(1.0, (20 * math.log10(max(rms, 1) / 32768) + 60) / 60))
+            try:
+                LEVEL.write_text(f"{level:.3f}")
+            except OSError:
+                pass
+    rec.terminate()
+    try:
+        rec.wait(timeout=2)
+    except subprocess.TimeoutExpired:
+        rec.kill()
+    LEVEL.unlink(missing_ok=True)
+
+
+def record_cmd(path):
+    cmd = ["pw-record", "--rate", "16000", "--channels", "1", "--format", "s16", "--media-role", "Communication"]
+    source = config().get("SOURCE")
+    if source:
+        cmd += ["--target", source]
+    if str(path) == "-":
+        return cmd + ["--raw", "-"]   # raw samples on stdout
+    return cmd + [str(path)]
+
+
+def stop_recorder():
+    """Stop pw-record cleanly (it finalizes the WAV header on SIGINT)."""
+    pid = recorder_pid()
+    if not pid:
+        return False
+    os.kill(pid, signal.SIGINT)
+    for _ in range(100):
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            break
+        time.sleep(0.02)
+    return True
+
+
+def cancel():
+    stop_recorder()
+    clear()
+    AUDIO.unlink(missing_ok=True)
+    shell("idle")
+
+
+def finish():
+    try:
+        started = int(STARTED.read_text())
+    except (OSError, ValueError):
+        started = now_ms()
+    if not stop_recorder():
+        clear()
+        shell("idle")
+        return
+    clear()
+    if now_ms() - started < MIN_AUDIO_MS or not AUDIO.exists():
+        AUDIO.unlink(missing_ok=True)
+        shell("idle")
+        return
+
+    c = config()
+    shell("transcribing")
+    try:
+        text = transcribe(AUDIO, c)
+    except RuntimeError as e:
+        shell("error", str(e))
+        return
+    finally:
+        AUDIO.unlink(missing_ok=True)
+    if not text:
+        shell("error", "Didn't catch that")
+        return
+    if c.get("COMMANDS", "yes") != "no" and voice_command(text):
+        shell("idle")
+        return
+    if c.get("SPACE", "yes") != "no":
+        text += " "  # so the next dictation doesn't run into this one
+    # wl-copy stays running to serve the clipboard: don't capture (wait on) its output.
+    quiet = {"stdin": subprocess.DEVNULL, "stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL}
+    if c.get("OUTPUT") in ("clipboard", "both"):
+        subprocess.Popen(["wl-copy", "--", text], start_new_session=True, **quiet)
+    if c.get("OUTPUT", "type") in ("type", "both"):
+        try:
+            subprocess.run(["wtype", "--", text], timeout=30, **quiet)
+        except subprocess.TimeoutExpired:
+            pass
+    shell("idle")
+
+
+def voice_command(text):
+    """Hand "text <name> <message>" (a draft to approve) or "call <name>" to the
+    phone panel; it works out who is meant (it knows the contacts)."""
+    text = text.strip()
+    m = VOICE_TEXT.match(text)
+    c = VOICE_CALL.match(text)
+    if m:
+        args = ["voiceText", m.group("rest").strip()]
+    elif c and c.group("name").split()[0].lower() not in NOT_NAMES:
+        args = ["voiceCall", c.group("name").strip()]
+    else:
+        return False
+    r = subprocess.run(["qs", "ipc", "call", "phone", *args], capture_output=True, text=True, timeout=5)
+    # Not handled (no phone panel): fall back to typing the words.
+    return r.returncode == 0 and "not found" not in (r.stdout + r.stderr).lower()
+
+
+def transcribe(audio, c):
+    model = model_path(c["MODEL"])
+    if not WHISPER.exists():
+        raise RuntimeError("Dictation isn't installed: open Dictation settings and click Install")
+    if not model.exists():
+        raise RuntimeError(f"The {c['MODEL']} model isn't downloaded: open Dictation settings")
+    threads = int(c.get("THREADS") or 0) or os.cpu_count() or 4
+    try:
+        out = subprocess.run(
+            [str(WHISPER), "-m", str(model), "-f", str(audio), "-l", c["LANGUAGE"],
+             "-t", str(threads), "-nt", "-np", "--no-fallback"],
+            capture_output=True, text=True, timeout=120)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("Transcription took too long")
+    if out.returncode != 0:
+        raise RuntimeError("Transcription failed: " + (out.stderr.strip().splitlines() or ["?"])[-1][:120])
+    text = NOISE.sub(" ", out.stdout)
+    return re.sub(r"\s+", " ", text).strip()
+
+
+# ------------------------------------------------------------ settings app ----
+
+def repo_root():
+    for parent in Path(__file__).resolve().parents:
+        if (parent / "steps").is_dir() and (parent / "install.sh").is_file():
+            return parent
+    return Path("/usr/share/fedcandor")
+
+
+def have(cmd):
+    return subprocess.run(["sh", "-c", f"command -v {cmd}"], capture_output=True).returncode == 0
+
+
+def missing_packages():
+    r = subprocess.run(["rpm", "-q", *PACKAGES], capture_output=True, text=True)
+    return [p for p in PACKAGES if f"package {p} is not installed" in r.stdout]
+
+
+def status():
+    c = config()
+    info = {}
+    try:
+        info = dict(l.split("=", 1) for l in (DATA / "build-info").read_text().split() if "=" in l)
+    except OSError:
+        pass
+    models = {}
+    for name, (_, size, desc) in MODELS.items():
+        f = model_path(name)
+        models[name] = {"present": f.is_file(), "size": size, "description": desc,
+                        "multilingual": not name.endswith(".en")}
+    print(json.dumps({
+        "atomic": Path("/run/ostree-booted").exists(),
+        "missingPackages": missing_packages(),
+        "whisper": WHISPER.exists(),
+        "gpu": info.get("vulkan") == "ON",
+        "models": models,
+        "config": {k: c.get(k, "") for k in SETTINGS},
+        "shortcut": "Super+Shift+D",
+    }))
+
+
+def run_step():
+    step = repo_root() / "steps/75-dictation.sh"
+    return subprocess.run(["bash", str(step)]).returncode
+
+
+def install():
+    """Packages (one pkexec prompt), then build whisper.cpp and fetch the model."""
+    missing = missing_packages()
+    if missing:
+        if Path("/run/ostree-booted").exists():
+            print(f"Fedora Atomic: install with rpm-ostree install {' '.join(missing)}, then reboot", flush=True)
+            return 1
+        print("Installing " + " ".join(missing) + " (asks for your password)…", flush=True)
+        r = subprocess.run(["pkexec", "dnf", "install", "-y", *missing])
+        if r.returncode != 0:
+            print("Package install was cancelled or failed", flush=True)
+            return 1
+    print("Building the speech engine (a few minutes)…", flush=True)
+    return run_step()
+
+
+def download(name):
+    if name not in MODELS:
+        print(f"unknown model {name}", flush=True)
+        return 1
+    sha, size, _ = MODELS[name]
+    dest = model_path(name)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    part = dest.with_suffix(".part")
+    url = f"https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-{name}.bin"
+    print(f"Downloading {name} ({size // 1_000_000} MB)…", flush=True)
+    r = subprocess.run(["curl", "-fL", "--proto", "=https", "--tlsv1.2", "-sS", "-o", str(part), url])
+    if r.returncode != 0:
+        part.unlink(missing_ok=True)
+        print("Download failed", flush=True)
+        return 1
+    import hashlib
+    h = hashlib.sha256()
+    with open(part, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            h.update(chunk)
+    if h.hexdigest() != sha:
+        part.unlink(missing_ok=True)
+        print("Checksum mismatch: download discarded", flush=True)
+        return 1
+    part.rename(dest)
+    print("Done", flush=True)
+    return 0
+
+
+def set_setting(key, value):
+    key = key.upper()
+    if key not in SETTINGS or "\n" in value:
+        sys.exit(f"fedcandor-dictate: can't set {key}")
+    CONFIG.parent.mkdir(parents=True, exist_ok=True)
+    lines = CONFIG.read_text().splitlines() if CONFIG.exists() else []
+    out, done = [], False
+    for line in lines:
+        if line.strip().split("=", 1)[0].strip().upper() == key and not line.strip().startswith("#"):
+            if not done:
+                out.append(f"{key}={value}")
+                done = True
+        else:
+            out.append(line)
+    if not done:
+        out.append(f"{key}={value}")
+    CONFIG.write_text("\n".join(out) + "\n")
+
+
+def test(seconds):
+    """Record for a few seconds and transcribe, reporting text and timing."""
+    clip = RUN / "test.wav"
+    clip.unlink(missing_ok=True)
+    rec = subprocess.Popen(record_cmd(clip), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    time.sleep(seconds)
+    rec.send_signal(signal.SIGINT)
+    rec.wait(timeout=5)
+    started = time.monotonic()
+    try:
+        text = transcribe(clip, config())
+        result = {"ok": True, "text": text, "seconds": round(time.monotonic() - started, 2)}
+    except RuntimeError as e:
+        result = {"ok": False, "error": str(e)}
+    finally:
+        clip.unlink(missing_ok=True)
+    print(json.dumps(result))
+
+
+def main():
+    if len(sys.argv) < 2:
+        sys.exit(__doc__)
+    cmd = sys.argv[1]
+    RUN.mkdir(mode=0o700, parents=True, exist_ok=True)
+
+    if cmd == "_record":
+        return record(Path(sys.argv[2]))
+
+    if cmd == "_watchdog":
+        pid = int(sys.argv[2])
+        deadline = time.monotonic() + MAX_SECONDS
+        while time.monotonic() < deadline:
+            time.sleep(1)
+            if recorder_pid() != pid:
+                return
+        cmd = "toggle"  # still the same recording after 5 minutes: wrap it up
+
+    if cmd == "status":
+        return status()
+    if cmd == "install":
+        sys.exit(install())
+    if cmd == "download" and len(sys.argv) == 3:
+        sys.exit(download(sys.argv[2]))
+    if cmd == "set" and len(sys.argv) == 4:
+        return set_setting(sys.argv[2], sys.argv[3])
+    if cmd == "test":
+        return test(float(sys.argv[2]) if len(sys.argv) > 2 else 4)
+
+    # One action at a time. Never queue behind the lock: a press while a
+    # transcription runs is dropped (otherwise key repeat piles up hundreds).
+    import fcntl
+    with open(LOCK, "w") as lock:
+        deadline = time.monotonic() + (0.3 if cmd == "press" else 3)
+        while True:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() > deadline:
+                    return
+                time.sleep(0.02)
+        recording = recorder_pid() is not None
+        if cmd == "press":
+            if recording and LATCHED.exists():
+                finish()
+            elif not recording:
+                start()
+        elif cmd == "release":
+            if not recording or LATCHED.exists():
+                return
+            try:
+                held = now_ms() - int(STARTED.read_text())
+            except (OSError, ValueError):
+                held = TAP_MS
+            if held < TAP_MS:
+                LATCHED.touch()   # a tap: keep listening until the next press
+                shell("listening", "latched")
+            else:
+                finish()
+        elif cmd == "toggle":
+            finish() if recording else start()
+        elif cmd == "cancel":
+            cancel()
+        else:
+            sys.exit(f"fedcandor-dictate: unknown command {cmd!r}")
+
+
+if __name__ == "__main__":
+    main()
