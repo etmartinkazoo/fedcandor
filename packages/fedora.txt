@@ -50,11 +50,27 @@ unzip
 fontconfig
 glib2                    # gsettings
 
-# Dictation (steps/75-dictation.sh builds whisper.cpp)
+# Dictation (whisper-cli comes with the Atomic image; packages/build.txt builds it elsewhere)
 wtype                    # types the transcribed text into the focused window
-gcc-c++
-cmake
-vulkan-headers           # whisper.cpp on the GPU (Vulkan)
-vulkan-loader-devel
-glslc
-spirv-headers-devel
+vulkan-loader            # whisper.cpp on the GPU (Vulkan)
+mesa-vulkan-drivers
+libgomp                  # whisper.cpp's CPU threads
+
+# Apps the desktop is set up around (Start menu pins, tray applets)
+firefox
+foot
+chromium
+neovim
+mpv
+imv
+Thunar
+thunar-archive-plugin
+pavucontrol
+blueman
+network-manager-applet
+system-config-printer
+fprintd-pam              # fingerprint for the lock screen and admin prompts
+
+# fedcandor-migrate
+rsync
+openssh-clients

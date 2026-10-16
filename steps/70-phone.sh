@@ -3,19 +3,26 @@
 set -euo pipefail
 source "$(dirname "$0")/../lib/common.sh"
 
-if ! command -v go >/dev/null 2>&1; then
+# The Atomic image ships a prebuilt /usr/bin/fedcandor-phone. A build here
+# (from a checkout, with Go installed) goes to ~/.local/bin, which the unit
+# prefers, so hacking on the daemon works on the image too.
+if command -v go >/dev/null 2>&1 && [ -d "$FEDCANDOR_ROOT/.git" -o ! -x /usr/bin/fedcandor-phone ]; then
+    info "Building fedcandor-phone"
+    mkdir -p "$HOME/.local/bin"
+    ( cd "$FEDCANDOR_ROOT/phone" && go build -trimpath -o "$HOME/.local/bin/fedcandor-phone" ./cmd/fedcandor-phone )
+    ok "fedcandor-phone installed to ~/.local/bin"
+elif [ -x /usr/bin/fedcandor-phone ]; then
+    ok "fedcandor-phone comes with the fedcandor image"
+else
     warn "Go isn't installed: skipping the phone panel (install Go, then: ./install.sh phone)"
     exit 0
 fi
-info "Building fedcandor-phone"
-mkdir -p "$HOME/.local/bin"
-( cd "$FEDCANDOR_ROOT/phone" && go build -trimpath -o "$HOME/.local/bin/fedcandor-phone" ./cmd/fedcandor-phone )
-ok "fedcandor-phone installed to ~/.local/bin"
 
 systemctl --user daemon-reload
 systemctl --user enable fedcandor-phone.service >/dev/null
 if [ -n "${SWAYSOCK:-}" ]; then
-    systemctl --user restart fedcandor-phone.service
+    # --no-block: this step also runs from fedcandor-setup.service at login.
+    systemctl --user --no-block restart fedcandor-phone.service
 fi
 ok "fedcandor-phone.service enabled"
 

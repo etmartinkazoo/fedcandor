@@ -43,7 +43,11 @@ HOME = Path.home()
 RUN = Path(os.environ.get("XDG_RUNTIME_DIR") or f"/tmp/fedcandor-{os.getuid()}") / "fedcandor-dictate"
 DATA = Path(os.environ.get("XDG_DATA_HOME") or HOME / ".local/share") / "fedcandor/whisper"
 CONFIG = Path(os.environ.get("XDG_CONFIG_HOME") or HOME / ".config") / "fedcandor/dictation.conf"
-WHISPER = HOME / ".local/bin/whisper-cli"
+# A local build (steps/75-dictation.sh) wins over the one the Atomic image ships.
+LOCAL_WHISPER = HOME / ".local/bin/whisper-cli"
+IMAGE_WHISPER = Path("/usr/bin/whisper-cli")
+WHISPER = LOCAL_WHISPER if LOCAL_WHISPER.exists() or not IMAGE_WHISPER.exists() else IMAGE_WHISPER
+BUILD_INFO = DATA / "build-info" if WHISPER == LOCAL_WHISPER else Path("/usr/share/fedcandor/whisper-build-info")
 
 AUDIO = RUN / "speech.wav"
 PID = RUN / "recorder.pid"
@@ -53,6 +57,8 @@ LOCK = RUN / "lock"
 LEVEL = RUN / "level"          # microphone level 0..1, ~20 times a second (the pill's meter)
 
 PACKAGES = ["wtype", "gcc-c++", "cmake", "git", "vulkan-headers", "vulkan-loader-devel", "glslc", "spirv-headers-devel"]
+if WHISPER == IMAGE_WHISPER:
+    PACKAGES = ["wtype"]  # nothing to build
 # name -> (sha256, bytes, description)
 MODELS = {
     "base.en": ("a03779c86df3323075f5e796cb2ce5029f00ec8869eee3fdfb897afe36c6d002", 147964211,
@@ -328,7 +334,7 @@ def status():
     c = config()
     info = {}
     try:
-        info = dict(l.split("=", 1) for l in (DATA / "build-info").read_text().split() if "=" in l)
+        info = dict(l.split("=", 1) for l in BUILD_INFO.read_text().split() if "=" in l)
     except OSError:
         pass
     models = {}

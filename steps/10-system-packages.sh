@@ -10,7 +10,7 @@ if is_atomic; then
 fi
 
 need_cmd dnf
-mapfile -t pkgs < <(package_list)
+mapfile -t pkgs < <(package_list; package_list build)
 info "Installing ${#pkgs[@]} packages with dnf"
 as_root dnf install -y "${pkgs[@]}"
 ok "packages installed"

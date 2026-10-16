@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Runs inside the image build (as root). Bakes packages, fonts, icons, user
-# units and security defaults into the image; per-user dotfiles are linked
+# units and security defaults into the image (fedcandor-phone and whisper-cli
+# arrive prebuilt from the Containerfile's build stages); per-user dotfiles are linked
 # from /usr/share/fedcandor at login by fedcandor-setup.service.
 set -euo pipefail
 
@@ -29,8 +30,10 @@ FEDCANDOR_FIREFOX_PREFIX=/usr bash "$ROOT/steps/25-firefox.sh"
 info "User units"
 install -Dm644 "$ROOT/dotfiles/systemd/.config/systemd/user/quickshell.service" \
     /usr/lib/systemd/user/quickshell.service
+install -Dm644 "$ROOT/dotfiles/systemd/.config/systemd/user/fedcandor-phone.service" \
+    /usr/lib/systemd/user/fedcandor-phone.service
 install -Dm644 "$ROOT/atomic/fedcandor-setup.service" /usr/lib/systemd/user/fedcandor-setup.service
-systemctl --global enable quickshell.service fedcandor-setup.service
+systemctl --global enable quickshell.service fedcandor-phone.service fedcandor-setup.service
 
 info "Security defaults"
 # Image updates are downloaded and staged automatically, applied on reboot;

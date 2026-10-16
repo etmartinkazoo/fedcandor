@@ -16,20 +16,39 @@ is baked into one image, and the OS updates as a whole:
 
 1. Install **Fedora Sway Atomic 45** from the ISO, with disk encryption enabled.
    (Any Fedora Atomic edition works as the starting point.)
-2. Rebase to fedcandor. The first rebase is unverified, because the system doesn't have the
-   signing key yet; the second one switches to signature-enforced updates:
+2. Run the bootstrap, then reboot when it asks:
 
    ```bash
-   rpm-ostree rebase ostree-unverified-registry:ghcr.io/etmartinkazoo/fedcandor:latest
-   systemctl reboot
-   rpm-ostree rebase ostree-image-signed:docker://ghcr.io/etmartinkazoo/fedcandor:latest
-   systemctl reboot
+   curl -fsSL https://raw.githubusercontent.com/etmartinkazoo/fedcandor/main/bootstrap.sh | bash
    ```
 
-3. Log into the **Sway** session. On first login, `fedcandor-setup.service` links the dotfiles,
-   and Quickshell starts.
+   It trusts the fedcandor signing key (so even the first download is verified), rebases onto
+   `ghcr.io/etmartinkazoo/fedcandor:latest` and clones the repo to `~/fedcandor`.
+   `FEDCANDOR_TAG=45` pins a Fedora release; `FEDCANDOR_CHECKOUT=0` skips the clone.
+3. Log into the **Sway** session. On first login, `fedcandor-setup.service` links the dotfiles
+   and enables the services, and Quickshell and the phone daemon start.
+4. Bring your own data over from the old machine, as a separate step:
 
-Pin a Fedora release with the `:45` tag instead of `:latest`.
+   ```bash
+   fedcandor-migrate --dry-run you@old-laptop   # see what would come over
+   fedcandor-migrate you@old-laptop             # theme, settings, models, Firefox, SSH/GPG keys
+   ```
+
+   The phone pairing stays on the old machine unless you add `--phone` (which moves it); otherwise
+   pair fresh with "Pair Phone" in the launcher.
+
+The image ships `fedcandor-phone` and `whisper-cli` prebuilt (built in throwaway stages of the
+Containerfile), so no compilers are installed. Building either from `~/fedcandor` puts it in
+`~/.local/bin`, which takes precedence.
+
+Without `bootstrap.sh`, the manual route is an unverified rebase, then a signed one:
+
+```bash
+rpm-ostree rebase ostree-unverified-registry:ghcr.io/etmartinkazoo/fedcandor:latest
+systemctl reboot
+rpm-ostree rebase ostree-image-signed:docker://ghcr.io/etmartinkazoo/fedcandor:latest
+systemctl reboot
+```
 
 ## Day to day
 
@@ -47,9 +66,9 @@ Updates are downloaded and staged automatically by `rpm-ostreed-automatic.timer`
 ## Customizing
 
 - Per-machine sway settings: `~/.config/sway/config.d/80-local.conf`.
-- To hack on the desktop itself, clone the repo to `~/fedcandor` and run
-  `./install.sh --user-only dotfiles session`. The links then point at your checkout, and the
-  login setup leaves them alone.
+- To hack on the desktop itself, work in `~/fedcandor` (bootstrap.sh clones it). The first login
+  links from the checkout; after that, re-run `./install.sh --user-only dotfiles session phone`
+  there yourself, and image updates leave your links alone.
 
 ## Building and publishing (maintainers)
 

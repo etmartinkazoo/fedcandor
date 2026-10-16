@@ -25,7 +25,7 @@ cd ~/fedcandor
 
 | Step              | Runs as | What it does |
 |-------------------|---------|--------------|
-| `system-packages` | sudo    | `dnf install` everything in `packages/fedora.txt` |
+| `system-packages` | sudo    | `dnf install` everything in `packages/fedora.txt` and `packages/build.txt` |
 | `system-security` | sudo    | automatic security updates, closes unused ssh in the firewall, reports SELinux/Secure Boot/LUKS status |
 | `firefox`         | sudo    | installs the fedcandor Theme extension system-wide (the one place Fedora's Firefox runs an unsigned add-on), so Firefox follows theme switches live |
 | `fonts`           | user    | 0xProto Nerd Font from its GitHub release (pinned version, SHA-256 verified) |
@@ -36,18 +36,24 @@ cd ~/fedcandor
 `./install.sh --list` shows the steps. `./install.sh fonts icons` runs just those, and
 `./install.sh --user-only` skips the sudo steps. Every step is idempotent, so re-running is how you update.
 
-For **Fedora Atomic**, see [atomic/README.md](atomic/README.md).
+For **Fedora Atomic** (one command on a fresh install), see [atomic/README.md](atomic/README.md):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/etmartinkazoo/fedcandor/main/bootstrap.sh | bash
+```
 
 ## Layout
 
 ```
 install.sh           entry point
+bootstrap.sh         fresh Fedora Atomic -> fedcandor (rebase onto the image, clone the repo)
 lib/common.sh        shared helpers (logging, verified downloads)
 steps/NN-*.sh        install steps, run in order
 themes/              built-in themes (Omarchy-compatible colors.toml + wallpapers)
 templates/           theme templates: rendered for Quickshell, sway, foot, GTK, Firefox
 firefox/             Firefox theme extension + its native messaging host (live theme switching)
 packages/fedora.txt  dnf package list (also used by the Atomic image)
+packages/build.txt   build tools for fedcandor-phone and whisper.cpp (not in the image)
 dotfiles/<pkg>/      stow packages: sway, quickshell, foot, swappy, autostart, systemd, bin
 atomic/              bootc image: Containerfile, build script, first-login setup
 site/                website and docs (Astro); deployed to GitHub Pages

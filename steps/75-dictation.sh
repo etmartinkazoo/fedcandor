@@ -22,11 +22,18 @@ if [ "${FEDCANDOR_WHISPER_VULKAN:-auto}" != off ] && command -v glslc >/dev/null
 fi
 STAMP="$DATA/.built-$WHISPER_COMMIT-vulkan-$vulkan"
 
-for cmd in git cmake g++ wtype pw-record; do
+for cmd in wtype pw-record; do
     command -v "$cmd" >/dev/null 2>&1 || die "missing command: $cmd (install the packages first: Dictation settings → Install, or the system-packages step)"
 done
 
-if [ ! -f "$STAMP" ] || [ ! -x "$HOME/.local/bin/whisper-cli" ]; then
+# The Atomic image ships whisper-cli prebuilt (atomic/Containerfile); a local
+# build in ~/.local/bin, when there is one, takes precedence.
+if [ -x /usr/bin/whisper-cli ] && [ ! -x "$HOME/.local/bin/whisper-cli" ]; then
+    ok "whisper-cli comes with the fedcandor image"
+elif [ ! -f "$STAMP" ] || [ ! -x "$HOME/.local/bin/whisper-cli" ]; then
+    for cmd in git cmake g++; do
+        command -v "$cmd" >/dev/null 2>&1 || die "missing command: $cmd (install the packages first: Dictation settings → Install, or the system-packages step)"
+    done
     info "Building whisper.cpp ($WHISPER_COMMIT)"
     mkdir -p "$DATA"
     if [ ! -d "$DATA/src/.git" ]; then
