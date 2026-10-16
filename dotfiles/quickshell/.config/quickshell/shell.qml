@@ -12,6 +12,9 @@ import Quickshell.I3
 ShellRoot {
     id: root
 
+    // First, so it stacks below every panel (see OutsideClick.qml)
+    OutsideClick {}
+
     // Plugins (all themed via Theme.qml, popups coordinated by ShellState.qml)
     Launcher { id: launcher }
     Screenshot { id: screenshotTool }
