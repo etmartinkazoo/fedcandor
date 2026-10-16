@@ -272,7 +272,7 @@ Scope {
 
             RowLayout {
                 width: parent.width
-                height: 28
+                height: Theme.headerHeight
 
                 PanelTitle {
                     text: "BLUETOOTH"
@@ -306,7 +306,7 @@ Scope {
                     required property var modelData
                     required property int index
                     width: devList.width
-                    height: 38
+                    height: Theme.rowHeight
                     readonly property bool isPending: btScope.pendingAddress === modelData.address
                     readonly property bool isFailed: btScope.failedAddress === modelData.address
                     readonly property string statusText: {
@@ -332,7 +332,7 @@ Scope {
 
                     RowLayout {
                         anchors.fill: parent
-                        spacing: 8
+                        spacing: Theme.spacingMedium
 
                         Text {
                             text: modelData.connected ? "󰂱" : (modelData.paired ? "󰂯" : "󰂰")

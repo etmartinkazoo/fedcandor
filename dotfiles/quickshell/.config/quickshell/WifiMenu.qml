@@ -243,7 +243,7 @@ Scope {
         property string text: ""
         property bool selected: false
         signal clicked()
-        height: 32
+        height: Theme.rowHeightCompact
         color: selected || dbMouse.containsMouse ? Theme.bgSelected : Theme.bgItem
         border.color: selected ? Theme.border : Theme.borderSubtle
         border.width: Theme.borderWidth
@@ -277,7 +277,7 @@ Scope {
         signal escaped()
         function focusInput() { tf.forceActiveFocus(); }
 
-        height: 38
+        height: Theme.rowHeight
         color: Theme.bgItem
         border.color: Theme.border
         border.width: Theme.borderWidth
@@ -333,7 +333,7 @@ Scope {
 
             RowLayout {
                 width: parent.width
-                height: 28
+                height: Theme.headerHeight
 
                 PanelTitle {
                     text: wifiScope.connectingSsid !== "" ? "WI-FI • connecting…" : "WI-FI"
@@ -430,7 +430,7 @@ Scope {
 
                     RowLayout {
                         anchors.fill: parent
-                        spacing: 8
+                        spacing: Theme.spacingMedium
 
                         Text {
                             text: wifiScope.signalIcon(modelData)

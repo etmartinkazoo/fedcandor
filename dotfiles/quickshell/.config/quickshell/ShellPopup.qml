@@ -21,14 +21,24 @@ PanelWindow {
 
     function close() { ShellState.closePopup(name); }
 
+    // 0 -> 1 as the popup opens; it stays mapped until it has faded out.
+    // Every popup animates the same way: a short fade, sliding in from the
+    // bar's edge (or easing in, when centered).
+    property real progress: shown ? 1 : 0
+    Behavior on progress { NumberAnimation { duration: 140; easing.type: Easing.OutCubic } }
+
     screen: ShellState.popupScreen
-    visible: shown
-    color: dim ? Theme.bgOverlay : "transparent"
+    visible: shown || progress > 0.001
+    color: dim ? Qt.rgba(Theme.bgOverlay.r, Theme.bgOverlay.g, Theme.bgOverlay.b, Theme.bgOverlay.a * progress) : "transparent"
     anchors { top: true; bottom: true; left: true; right: true }
     exclusionMode: ExclusionMode.Ignore
     focusable: true
     WlrLayershell.layer: WlrLayer.Overlay
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+    // Let go of the keyboard and pointer as soon as it starts closing
+    WlrLayershell.keyboardFocus: shown ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    mask: shown ? null : emptyRegion
+
+    Region { id: emptyRegion }
     WlrLayershell.namespace: "quickshell-popup"
 
     onShownChanged: if (shown) Qt.callLater(() => scope.forceActiveFocus())
@@ -48,6 +58,11 @@ PanelWindow {
             : (Desktop.barOnTop ? Desktop.popupInset : parent.height - height - Desktop.popupInset)
         width: popup.panelWidth
         height: popup.panelHeight > 0 ? popup.panelHeight : scope.childrenRect.height + Theme.paddingLarge * 2
+        opacity: popup.progress
+        scale: popup.centered ? 0.97 + 0.03 * popup.progress : 1
+        transform: Translate {
+            y: popup.centered ? 0 : (1 - popup.progress) * 10 * (Desktop.barOnTop ? -1 : 1)
+        }
         color: Theme.bgPanel
         border.color: Theme.border
         border.width: Theme.borderWidth

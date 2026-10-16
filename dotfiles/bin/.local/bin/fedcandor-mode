@@ -30,8 +30,80 @@ current() {
 
 swaymsg_quiet() { swaymsg "$@" >/dev/null 2>&1 || true; }
 
+# Window layouts across mode switches. Leaving a floating mode saves where
+# every floating window was; entering one puts them back, and windows that
+# have never floated start where they were tiled.
+#   layout save              -> floating-layout.json
+#   layout tiled             -> print {con_id: frame} of tiled windows (stdout)
+#   layout restore TILED     -> print sway commands placing each window
+#   layout correct TILED     -> the same, compensating for how far off the
+#                               first placement landed (title bars, apps that
+#                               size in character cells)
+layout() {
+    swaymsg -r -t get_tree | python3 -I -c '
+import json, sys, os
+state, mode = sys.argv[1], sys.argv[2]
+saved_path = os.path.join(state, "floating-layout.json")
+tree = json.load(sys.stdin)
+
+def windows(node, ws=""):
+    if node.get("type") == "workspace":
+        ws = node["name"]
+    if node.get("pid") and node.get("type") in ("con", "floating_con") and ws != "__i3_scratch":
+        yield node
+    for c in node.get("nodes", []) + node.get("floating_nodes", []):
+        yield from windows(c, ws)
+
+def frame(n):
+    r, title = n["rect"], (n.get("deco_rect") or {}).get("height", 0) if n["type"] == "floating_con" else 0
+    return {"x": r["x"], "y": r["y"] - title, "width": r["width"], "height": r["height"] + title}
+
+if mode == "save":
+    frames = {str(n["id"]): frame(n) for n in windows(tree) if n["type"] == "floating_con"}
+    with open(saved_path + ".tmp", "w") as f:
+        json.dump(frames, f)
+    os.replace(saved_path + ".tmp", saved_path)
+elif mode == "tiled":
+    print(json.dumps({str(n["id"]): frame(n) for n in windows(tree) if n["type"] == "con"}))
+elif mode in ("restore", "correct"):
+    try:
+        saved = json.load(open(saved_path))
+    except (OSError, ValueError):
+        saved = {}
+    tiled = json.loads(sys.argv[3])
+    for n in windows(tree):
+        f = saved.get(str(n["id"])) or tiled.get(str(n["id"]))
+        if f and n["type"] == "floating_con":
+            w, h = f["width"], f["height"]
+            if mode == "correct":
+                cur = frame(n)
+                dw, dh = f["width"] - cur["width"], f["height"] - cur["height"]
+                if abs(dw) <= 2 and abs(dh) <= 2 and abs(f["x"] - cur["x"]) <= 2 and abs(f["y"] - cur["y"]) <= 2:
+                    continue
+                # Ask for the target plus what was missing
+                w += dw
+                h += dh
+            print("[con_id=%d] resize set %d %d, move absolute position %d %d"
+                  % (n["id"], w, h, f["x"], f["y"]))
+' "$STATE" "$@"
+}
+
 apply() {
     local mode=$1
+    local prev running=0
+    prev=$(current)
+    [[ -n ${SWAYSOCK:-} ]] || pgrep -x sway >/dev/null && running=1
+
+    # Measure before anything changes: the shell swaps bars as soon as the
+    # mode file changes, and sway re-tiles around the new bar.
+    local tiled="{}"
+    if ((running)); then
+        if [[ $prev != tiling && $mode == tiling ]]; then
+            layout save || true
+        elif [[ $prev == tiling && $mode != tiling ]]; then
+            tiled=$(layout tiled || echo "{}")
+        fi
+    fi
     mkdir -p "$STATE" "$(dirname "$SWAY_DROPIN")"
 
     if [[ $mode == tiling ]]; then
@@ -77,7 +149,7 @@ EOF
     mv "$SWAY_DROPIN.tmp" "$SWAY_DROPIN"
     echo "$mode" >"$STATE/mode.tmp" && mv "$STATE/mode.tmp" "$STATE/mode"
 
-    if [[ -n ${SWAYSOCK:-} ]] || pgrep -x sway >/dev/null; then
+    if ((running)); then
         swaymsg_quiet reload
         # Bring the windows that are already open into the new mode. Minimized
         # windows (in the scratchpad) are left where they are.
@@ -88,6 +160,17 @@ EOF
         else
             swaymsg_quiet '[workspace="^(?!__i3_scratch$)" tiling] floating enable, border normal 1'
             swaymsg_quiet 'gaps inner all set 0, gaps outer all set 0'
+            if [[ $prev == tiling ]]; then
+                layout restore "$tiled" | while IFS= read -r cmd; do swaymsg_quiet "$cmd"; done
+                # Correct until every window is within 2px (sway applies
+                # sizes asynchronously; apps may round them)
+                for _ in 1 2 3; do
+                    sleep 0.15
+                    cmds=$(layout correct "$tiled")
+                    [[ -z $cmds ]] && break
+                    while IFS= read -r cmd; do swaymsg_quiet "$cmd"; done <<<"$cmds"
+                done
+            fi
         fi
     fi
 }

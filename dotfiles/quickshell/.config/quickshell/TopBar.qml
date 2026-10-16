@@ -35,6 +35,7 @@ PanelWindow {
             BarButton {
                 id: logoBtn
                 text: "󰣛"
+                tooltip: "Apps (Super+Space)"
                 textColor: Theme.accent
                 highlighted: bar.tools.launcher.active
                 onLeftClicked: ShellState.togglePopup("launcher", bar.screen, logoBtn.centerX())

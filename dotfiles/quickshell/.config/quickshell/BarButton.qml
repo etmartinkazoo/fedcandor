@@ -11,6 +11,7 @@ Rectangle {
     property bool critical: false
     property bool dim: false
     property color textColor: dim ? Theme.textSecondary : Theme.textPrimary
+    property string tooltip: ""
     readonly property bool hovered: mouse.containsMouse
 
     signal leftClicked()
@@ -37,6 +38,12 @@ Rectangle {
         color: btn.textColor
         font.family: Theme.fontFamily
         font.pixelSize: btn.icon ? Theme.fontIcon : Theme.fontCaption
+    }
+
+    Tip {
+        target: btn
+        text: btn.tooltip
+        hovered: btn.hovered
     }
 
     MouseArea {

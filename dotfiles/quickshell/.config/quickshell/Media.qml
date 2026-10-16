@@ -149,7 +149,7 @@ Scope {
 
                 Column {
                     Layout.fillWidth: true
-                    spacing: 4
+                    spacing: Theme.spacingCompact
 
                     Text {
                         width: parent.width
@@ -184,7 +184,7 @@ Scope {
 
             Column {
                 width: parent.width
-                spacing: 4
+                spacing: Theme.spacingCompact
                 visible: mediaScope.player !== null && mediaScope.player.lengthSupported && mediaScope.player.length > 0
 
                 Meter {

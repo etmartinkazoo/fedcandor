@@ -90,9 +90,9 @@ Scope {
 
                 RowLayout {
                     anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 12
-                    spacing: 10
+                    anchors.leftMargin: Theme.paddingLarge
+                    anchors.rightMargin: Theme.paddingLarge
+                    spacing: Theme.spacingMedium
 
                     Text {
                         text: "󰔎"
@@ -137,7 +137,7 @@ Scope {
             // Brightness
             Column {
                 width: parent.width
-                spacing: 4
+                spacing: Theme.spacingCompact
                 visible: qs.brightness >= 0
                 RowLayout {
                     width: parent.width
@@ -161,7 +161,7 @@ Scope {
             // Warmth (night light): directly under brightness
             Column {
                 width: parent.width
-                spacing: 6
+                spacing: Theme.paddingSmall
                 RowLayout {
                     width: parent.width
                     Caption {

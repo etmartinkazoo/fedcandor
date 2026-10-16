@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Run the quick desktop check when a commit touches the shell, sway, scripts,
+# templates or themes. Skip once with: git commit --no-verify
+set -euo pipefail
+if git diff --cached --name-only | grep -qE '^(dotfiles/|templates/|themes/|steps/|firefox/)'; then
+    echo "fedcandor: checking the desktop (tests/check.sh --quick)..."
+    exec "$(git rev-parse --show-toplevel)/tests/check.sh" --quick
+fi

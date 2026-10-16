@@ -220,7 +220,7 @@ Scope {
 
                         Column {
                             Layout.fillWidth: true
-                            spacing: 4
+                            spacing: Theme.spacingCompact
 
                             RowLayout {
                                 width: parent.width
@@ -299,7 +299,7 @@ Scope {
 
             RowLayout {
                 width: parent.width
-                height: 28
+                height: Theme.headerHeight
 
                 PanelTitle {
                     text: "NOTIFICATIONS"
@@ -341,9 +341,9 @@ Scope {
                             left: parent.left
                             right: parent.right
                             top: parent.top
-                            topMargin: 8
+                            topMargin: Theme.spacingMedium
                         }
-                        spacing: 4
+                        spacing: Theme.spacingCompact
 
                         RowLayout {
                             width: parent.width

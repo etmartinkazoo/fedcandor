@@ -13,18 +13,21 @@ PopupWindow {
     property string appId: ""
     property var pendingTile: null
     property string pendingAppId: ""
+    property string output: ""            // only this monitor's windows
+    property string pendingOutput: ""
 
-    readonly property var wins: appId !== "" ? WindowList.windowsOf(appId) : []
+    readonly property var wins: appId !== "" ? WindowList.windowsOf(appId, output) : []
     readonly property int cardWidth: 220
 
-    function show(t, id) {
-        if (WindowList.windowsOf(id).length === 0) {
+    function show(t, id, out) {
+        if (WindowList.windowsOf(id, out).length === 0) {
             leave();
             return;
         }
         closeTimer.stop();
         pendingTile = t;
         pendingAppId = id;
+        pendingOutput = out ?? "";
         if (visible) openTimer.triggered();   // already open: follow the pointer at once
         else openTimer.restart();
     }
@@ -47,7 +50,8 @@ PopupWindow {
         onTriggered: {
             pv.tile = pv.pendingTile;
             pv.appId = pv.pendingAppId;
-            WindowList.capture(WindowList.windowsOf(pv.appId));
+            pv.output = pv.pendingOutput;
+            WindowList.capture(WindowList.windowsOf(pv.appId, pv.output));
         }
     }
 

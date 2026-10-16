@@ -153,8 +153,8 @@ Scope {
 
             Column {
                 anchors.fill: parent
-                anchors.margins: 10
-                spacing: 6
+                anchors.margins: Theme.paddingLarge
+                spacing: Theme.paddingSmall
 
                 RowLayout {
                     width: parent.width
@@ -190,7 +190,7 @@ Scope {
         readonly property int pct: node && node.audio ? Math.round(node.audio.volume * 100) : 0
         // Some streams (e.g. the PipeWire ALSA plugin) expose no channel volumes.
         readonly property bool hasVolume: node !== null && node.audio !== null && node.audio.volumes.length > 0
-        spacing: 4
+        spacing: Theme.spacingCompact
 
         RowLayout {
             width: parent.width
@@ -224,7 +224,7 @@ Scope {
         id: dr
         property var node: null
         property bool isDefault: false
-        height: 30
+        height: Theme.rowHeightCompact
         outlined: isDefault
         selected: isDefault
 

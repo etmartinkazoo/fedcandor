@@ -22,6 +22,7 @@ Row {
             required property var modelData
             icon: false
             text: modelData.name
+            tooltip: "Workspace " + modelData.name
             highlighted: modelData.active
             critical: modelData.urgent
             dim: !modelData.active

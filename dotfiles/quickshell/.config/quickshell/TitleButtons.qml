@@ -13,6 +13,7 @@ import Quickshell.Wayland
 //   - double-click to maximize or restore
 //   - drag to move; drop on a screen edge to snap (left/right half, top to
 //     maximize, corners for quarters), with a preview of where it will land
+//   - resize from invisible handles just outside the sides and bottom
 //
 // Only the focused window gets the strip: it sits above all windows, so on a
 // window further back it would cover the ones in front.
@@ -182,6 +183,15 @@ Scope {
                                 hoverEnabled: true
                                 onClicked: tb.run(winBtn.modelData.action, perScreen.win)
                             }
+
+                            Tip {
+                                target: winBtn
+                                below: true
+                                hovered: btnMouse.containsMouse
+                                text: winBtn.modelData.action === "close" ? "Close (Alt+W)"
+                                    : winBtn.modelData.action === "minimize" ? "Minimize"
+                                    : (perScreen.win && WindowList.isMaximized(perScreen.win.id) ? "Restore (Alt+M)" : "Maximize (Alt+M)")
+                            }
                         }
                     }
                 }
@@ -236,6 +246,19 @@ Scope {
                         const actions = ["close", "minimize", "maximize"];
                         if (i >= 0 && i < 3) tb.run(actions[i], perScreen.win);
                     }
+                }
+            }
+
+            // ---- Resize handles around the window ----
+            Variants {
+                model: ["l", "r", "b", "bl", "br"]
+                ResizeGrip {
+                    required property string modelData
+                    edge: modelData
+                    screen: perScreen.modelData
+                    win: perScreen.shown ? perScreen.win : null
+                    out: perScreen.out
+                    active: !perScreen.dragging
                 }
             }
 

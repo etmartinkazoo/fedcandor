@@ -86,6 +86,12 @@ Singleton {
     readonly property int paddingLarge: 12
     readonly property int inputPadding: 14
     readonly property int spacingSmall: 2
+    readonly property int spacingCompact: 4
+
+    // Row heights, shared by every panel
+    readonly property int headerHeight: 28       // a panel's title row with its buttons
+    readonly property int rowHeightCompact: 32   // dense lists (audio devices, DNS presets)
+    readonly property int rowHeight: 38          // lists (networks, Bluetooth devices)
     readonly property int spacingMedium: 8
     readonly property int spacingLarge: 12
 

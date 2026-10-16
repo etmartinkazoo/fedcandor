@@ -42,6 +42,7 @@ PanelWindow {
                 width: Desktop.dockTile
                 height: Desktop.dockTile
                 glyph: "󰀻"
+                tooltip: "Apps (Super+Space)"
                 iconSize: Desktop.dockIcon
                 indicator: "dot"
                 focused: dock.tools.launcher.active
@@ -57,7 +58,7 @@ PanelWindow {
             }
 
             Repeater {
-                model: WindowList.barApps(ShellState.settings.pinnedApps)
+                model: WindowList.barApps(ShellState.settings.pinnedApps, dock.modelData.name)
                 delegate: AppTile {
                     required property var modelData
                     width: Desktop.dockTile
@@ -65,13 +66,14 @@ PanelWindow {
                     appId: modelData.appId
                     iconSize: Desktop.dockIcon
                     indicator: "dot"
-                    running: WindowList.isRunning(modelData.appId)
-                    focused: WindowList.focusedWindow !== null && WindowList.focusedWindow.appId === modelData.appId
+                    running: WindowList.isRunning(modelData.appId, dock.modelData.name)
+                    focused: WindowList.isFocusedApp(modelData.appId, dock.modelData.name)
                     badge: dock.tools.notifications.countFor(modelData.appId)
-                    onHoveredChanged: hovered ? previews.show(this, modelData.appId) : previews.leave()
+                    tooltip: running ? "" : WindowList.nameFor(modelData.appId)
+                    onHoveredChanged: hovered ? previews.show(this, modelData.appId, dock.modelData.name) : previews.leave()
                     onLeftClicked: {
                         previews.hide();
-                        WindowList.clickApp(modelData.appId);
+                        WindowList.clickApp(modelData.appId, dock.modelData.name);
                     }
                     onMiddleClicked: WindowList.launch(modelData.appId)
                     onRightClicked: ShellState.togglePin(modelData.appId)

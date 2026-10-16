@@ -47,6 +47,7 @@ PanelWindow {
                     id: launchBtn
                     icon: false
                     text: "LAUNCH"
+                    tooltip: "Apps (Super+Space)"
                     highlighted: bar.tools.launcher.active
                     onLeftClicked: ShellState.togglePopup("launcher", bar.screen)
                 }

@@ -287,7 +287,7 @@ Scope {
                             id: row
                             readonly property var modelData: entry.modelData
                             width: list.width
-                            height: 40
+                            height: Theme.rowHeight
                             selected: entry.index === start.index
                             onEntered: start.index = entry.index
                             onClicked: start.launch(entry.modelData)

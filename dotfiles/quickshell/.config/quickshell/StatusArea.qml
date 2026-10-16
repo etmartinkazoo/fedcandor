@@ -63,6 +63,7 @@ Row {
     BarButton {
         id: quickBtn
         text: area.tools.quick.barText
+        tooltip: "Quick settings"
         highlighted: area.tools.quick.active || area.tools.themes.active
         onLeftClicked: area.toggle("quick", quickBtn)
     }
@@ -70,6 +71,7 @@ Row {
     BarButton {
         id: volBtn
         icon: false
+        tooltip: "Volume (scroll to adjust, right-click to mute)"
         // A muted microphone shows inside the volume pill.
         text: area.tools.audio.barText + (area.tools.audio.micMuted ? "  " + area.tools.audio.micIcon : "")
         critical: area.tools.audio.micMuted
@@ -83,6 +85,7 @@ Row {
     BarButton {
         id: wifiBtn
         text: area.tools.wifi.barIcon
+        tooltip: "Wi-Fi"
         highlighted: area.tools.wifi.active
         onLeftClicked: area.toggle("wifi", wifiBtn)
     }
@@ -90,6 +93,7 @@ Row {
     BarButton {
         id: btBtn
         text: area.tools.bluetooth.barIcon
+        tooltip: "Bluetooth (right-click: on/off)"
         highlighted: area.tools.bluetooth.active
         onLeftClicked: area.toggle("bluetooth", btBtn)
         onRightClicked: area.tools.bluetooth.togglePower()
@@ -100,6 +104,7 @@ Row {
         id: notifBtn
         icon: false
         text: area.tools.notifications.barText
+        tooltip: "Notifications (right-click: do not disturb)"
         highlighted: area.tools.notifications.active || area.tools.notifications.dnd
         onLeftClicked: area.toggle("notifications", notifBtn)
         onRightClicked: area.tools.notifications.setDnd(!area.tools.notifications.dnd)
@@ -109,6 +114,7 @@ Row {
         id: systemBtn
         icon: !area.tools.battery.hasBattery
         text: area.tools.system.barText
+        tooltip: "Battery and power"
         highlighted: area.tools.system.active
         critical: area.tools.battery.isLow
         onLeftClicked: area.toggle("system", systemBtn)

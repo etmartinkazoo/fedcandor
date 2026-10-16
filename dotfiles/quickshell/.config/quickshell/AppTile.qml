@@ -16,6 +16,8 @@ Rectangle {
     property string indicator: "bar"
     property string glyph: ""            // a Nerd Font icon instead of an app icon (start button, dock launcher)
     property int badge: 0                // unread notifications, shown top-right
+    property string tooltip: ""
+    property bool tooltipBelow: false
     readonly property bool hovered: mouse.containsMouse
 
     signal leftClicked()
@@ -85,6 +87,13 @@ Rectangle {
             font.pixelSize: Theme.fontSmall
             font.bold: true
         }
+    }
+
+    Tip {
+        target: tile
+        text: tile.tooltip
+        hovered: tile.hovered
+        below: tile.tooltipBelow
     }
 
     MouseArea {

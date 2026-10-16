@@ -19,6 +19,7 @@ Singleton {
     // in tree order. `frame` is the whole window in layout coordinates, title
     // bar included; `titleHeight` is 0 without a title bar.
     property var windows: []
+    property string windowsKey: ""
     // Usable area (bars excluded) per workspace and per output: name -> {x, y, width, height}
     property var workspaceRects: ({})
     property var outputRects: ({})
@@ -49,27 +50,43 @@ Singleton {
 
     readonly property var focusedWindow: windows.find(w => w.focused) ?? null
 
+    // Is this window on that monitor? Minimized windows count on the monitor
+    // they were minimized from (anywhere, if we don't know). No output given
+    // means every monitor.
+    function onOutput(w, output) {
+        if (!output) return true;
+        if (!w.minimized) return w.output === output;
+        const st = minimizedState[w.id];
+        return !st || !st.output || st.output === output;
+    }
+
     // Taskbar/dock order: pinned apps first, then other running apps in the
-    // order their windows opened (stable, unlike MRU).
-    function barApps(pinned) {
+    // order their windows opened (stable, unlike MRU). With an output, only
+    // that monitor's windows count.
+    function barApps(pinned, output) {
         const out = pinned.map(a => ({ appId: a, pinned: true }));
         for (const w of windows) {
-            if (!out.some(x => x.appId === w.appId)) out.push({ appId: w.appId, pinned: false });
+            if (onOutput(w, output) && !out.some(x => x.appId === w.appId)) out.push({ appId: w.appId, pinned: false });
         }
         return out;
     }
 
-    function isRunning(appId) {
-        return windows.some(w => w.appId === appId);
+    function isRunning(appId, output) {
+        return windows.some(w => w.appId === appId && onOutput(w, output));
+    }
+
+    function isFocusedApp(appId, output) {
+        const f = focusedWindow;
+        return f !== null && f.appId === appId && (!output || f.output === output);
     }
 
     // Left click on an app tile: switch to it, or start it
-    function clickApp(appId) {
-        if (!activateApp(appId)) launch(appId);
+    function clickApp(appId, output) {
+        if (!activateApp(appId, output)) launch(appId);
     }
 
-    function windowsOf(appId) {
-        return windowsByMru.filter(w => w.appId === appId);
+    function windowsOf(appId, output) {
+        return windowsByMru.filter(w => w.appId === appId && onOutput(w, output));
     }
 
     // ---- Actions ----
@@ -87,7 +104,7 @@ Singleton {
         const w = find(id);
         if (w && !w.minimized) {
             const ms = Object.assign({}, minimizedState);
-            ms[id] = { frame: w.frame, floating: w.floating };
+            ms[id] = { frame: w.frame, floating: w.floating, output: w.output };
             minimizedState = ms;
         }
         I3.dispatch(`[con_id=${id}] move scratchpad`);
@@ -158,8 +175,15 @@ Singleton {
         if (snapped[id] === "max") return true;
         const w = find(id);
         const t = w && w.floating ? zoneRect(w, "max") : null;
-        return t !== null && Math.abs(t.x - w.frame.x) <= 2 && Math.abs(t.y - w.frame.y) <= 2
-            && Math.abs(t.width - w.frame.width) <= 2 && Math.abs(t.height - w.frame.height) <= 2;
+        return t !== null && near(t, w.frame);
+    }
+
+    // Same place and size, give or take what apps that size themselves in
+    // whole character cells (terminals) leave over
+    readonly property int sizeSlack: 24
+    function near(a, b) {
+        return Math.abs(a.x - b.x) <= 2 && Math.abs(a.y - b.y) <= 2
+            && Math.abs(a.width - b.width) <= sizeSlack && Math.abs(a.height - b.height) <= sizeSlack;
     }
 
     function zoneRect(win, zone) {
@@ -180,6 +204,9 @@ Singleton {
 
     function setFrame(id, f) {
         snapTimer.restart();
+        // Move our copy right away, so the title-bar buttons don't trail behind
+        // until sway's tree is read again
+        windows = windows.map(w => w.id === id ? Object.assign({}, w, { frame: { x: f.x, y: f.y, width: f.width, height: f.height } }) : w);
         geometryChanged();
         I3.dispatch(`[con_id=${id}] resize set ${Math.round(f.width)} ${Math.round(f.height)}, move absolute position ${Math.round(f.x)} ${Math.round(f.y)}`);
     }
@@ -256,8 +283,12 @@ Singleton {
     property int thumbVersion: 0
     property var pendingCaptures: []
 
+    // Window ids with a snapshot on disk
+    property var captured: ({})
+
+    // "" until the window has been captured once
     function thumbFor(id) {
-        return "file://" + thumbDir + "/" + id + ".png?v=" + thumbVersion;
+        return captured[id] ? "file://" + thumbDir + "/" + id + ".png?v=" + thumbVersion : "";
     }
 
     function capture(list) {
@@ -270,13 +301,18 @@ Singleton {
             pendingCaptures = pendingCaptures.concat(list);
             return;
         }
+        captureProc.ids = args.filter((x, i) => i % 2 === 0);
         captureProc.command = ["sh", Quickshell.shellPath("scripts/window-thumbs.sh"), thumbDir].concat(args);
         captureProc.running = true;
     }
 
     Process {
         id: captureProc
+        property var ids: []
         onExited: {
+            const c = Object.assign({}, wl.captured);
+            for (const id of ids) c[id] = true;
+            wl.captured = c;
             wl.thumbVersion++;
             if (wl.pendingCaptures.length > 0) {
                 const next = wl.pendingCaptures;
@@ -288,8 +324,8 @@ Singleton {
 
     // Taskbar/dock click: focus the app; if it's already focused, minimize
     // it; with several windows, cycle through them.
-    function activateApp(appId) {
-        const ws = windowsOf(appId);
+    function activateApp(appId, output) {
+        const ws = windowsOf(appId, output);
         if (ws.length === 0) return false;
         const focused = ws.find(w => w.focused);
         if (!focused) focus(ws[0].id);
@@ -330,7 +366,14 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 try {
-                    wl.windows = wl.parse(JSON.parse(text));
+                    const next = wl.parse(JSON.parse(text));
+                    // Only publish real changes: polling (below) re-reads the
+                    // tree often, and every assignment redraws the bars.
+                    const key = JSON.stringify(next);
+                    if (key !== wl.windowsKey) {
+                        wl.windowsKey = key;
+                        wl.windows = next;
+                    }
                 } catch (e) {
                     console.warn("windowlist: bad tree", e);
                 }
@@ -395,8 +438,7 @@ Singleton {
         for (const id in snapped) {
             const w = out.find(x => String(x.id) === id);
             const target = w ? zoneRect(w, snapped[id]) : null;
-            if (!w || !w.floating || !target || Math.abs(target.x - w.frame.x) > 2 || Math.abs(target.y - w.frame.y) > 2
-                || Math.abs(target.width - w.frame.width) > 2 || Math.abs(target.height - w.frame.height) > 2) {
+            if (!w || !w.floating || !target || !near(target, w.frame)) {
                 if (!w || !pendingSnap(id)) forget(Number(id));
             }
         }
@@ -429,6 +471,17 @@ Singleton {
 
     function geometryChanged() {
         geometryRefresh.restart();
+    }
+
+    // sway sends no event when a floating window is moved or resized by
+    // anything but us (its own drag, a command, the app itself). While a
+    // floating window has focus, keep its geometry fresh for the title-bar
+    // buttons and resize handles.
+    Timer {
+        interval: 400
+        repeat: true
+        running: Desktop.mode !== "tiling" && wl.focusedWindow !== null && wl.focusedWindow.floating
+        onTriggered: wl.refresh()
     }
 
     // Coalesce bursts of events (a new window sends several)

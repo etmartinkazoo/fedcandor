@@ -67,7 +67,7 @@ Scope {
         property string value
         property real fraction
         property bool hot: false
-        spacing: 4
+        spacing: Theme.spacingCompact
         RowLayout {
             width: parent.width
             Caption { text: stat.label; Layout.fillWidth: true }
@@ -134,7 +134,7 @@ Scope {
             // Battery
             Column {
                 width: parent.width
-                spacing: 4
+                spacing: Theme.spacingCompact
                 visible: sys.battery.hasBattery
 
                 Meter {

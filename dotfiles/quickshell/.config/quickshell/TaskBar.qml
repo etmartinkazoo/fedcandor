@@ -46,6 +46,7 @@ PanelWindow {
                     width: Desktop.taskTile
                     height: bar.tileHeight
                     glyph: "󰣛"
+                    tooltip: "Start"
                     iconSize: Desktop.taskIcon
                     focused: bar.tools.start.active
                     onLeftClicked: ShellState.togglePopup("start", bar.screen, startBtn.centerX())
@@ -56,26 +57,28 @@ PanelWindow {
                     width: Desktop.taskTile
                     height: bar.tileHeight
                     glyph: "󰕰"
+                    tooltip: "All windows (Super+Ctrl+↑)"
                     iconSize: Desktop.taskIcon
                     focused: bar.tools.overview.active
                     onLeftClicked: ShellState.togglePopup("overview", bar.screen)
                 }
 
                 Repeater {
-                    model: WindowList.barApps(ShellState.settings.pinnedApps)
+                    model: WindowList.barApps(ShellState.settings.pinnedApps, bar.modelData.name)
                     delegate: AppTile {
                         required property var modelData
                         width: Desktop.taskTile
                         height: bar.tileHeight
                         appId: modelData.appId
                         iconSize: Desktop.taskIcon
-                        running: WindowList.isRunning(modelData.appId)
-                        focused: WindowList.focusedWindow !== null && WindowList.focusedWindow.appId === modelData.appId
+                        running: WindowList.isRunning(modelData.appId, bar.modelData.name)
+                        focused: WindowList.isFocusedApp(modelData.appId, bar.modelData.name)
                         badge: bar.tools.notifications.countFor(modelData.appId)
-                        onHoveredChanged: hovered ? previews.show(this, modelData.appId) : previews.leave()
+                        tooltip: running ? "" : WindowList.nameFor(modelData.appId)
+                        onHoveredChanged: hovered ? previews.show(this, modelData.appId, bar.modelData.name) : previews.leave()
                         onLeftClicked: {
                             previews.hide();
-                            WindowList.clickApp(modelData.appId);
+                            WindowList.clickApp(modelData.appId, bar.modelData.name);
                         }
                         onMiddleClicked: WindowList.launch(modelData.appId)
                         onRightClicked: ShellState.togglePin(modelData.appId)

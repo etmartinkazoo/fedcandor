@@ -170,7 +170,7 @@ Scope {
 
                 Image {
                     anchors.fill: parent
-                    anchors.margins: 4
+                    anchors.margins: Theme.spacingCompact
                     source: clipScope.previewPath
                     fillMode: Image.PreserveAspectFit
                     asynchronous: true
