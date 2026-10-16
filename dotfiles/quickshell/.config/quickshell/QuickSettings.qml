@@ -68,6 +68,7 @@ Scope {
                 case Qt.Key_A: qs.caffeine.toggle(); break;
                 case Qt.Key_D: ShellState.settings.dnd = !ShellState.settings.dnd; break;
                 case Qt.Key_T: qs.openTool("themes"); break;
+                case Qt.Key_M: Desktop.nextMode(); break;
                 case Qt.Key_S: qs.openTool("screenshot"); break;
                 case Qt.Key_V: qs.openTool("clipboard"); break;
                 case Qt.Key_Slash: qs.openTool("keybinds"); break;
@@ -222,6 +223,33 @@ Scope {
                 }
             }
 
+            // Desktop mode
+            Column {
+                width: parent.width
+                spacing: Theme.paddingSmall
+
+                Caption { text: "DESKTOP MODE [M]" }
+
+                Row {
+                    width: parent.width
+                    spacing: Theme.spacingMedium
+                    readonly property real w: (width - spacing * 2) / 3
+                    Repeater {
+                        model: Desktop.modes
+                        delegate: OptionTile {
+                            required property var modelData
+                            width: parent.w
+                            height: 62
+                            iconSize: 15
+                            icon: modelData.icon
+                            label: modelData.label
+                            selected: Desktop.mode === modelData.name
+                            onClicked: Desktop.setMode(modelData.name)
+                        }
+                    }
+                }
+            }
+
             // Tools
             Row {
                 width: parent.width
@@ -231,7 +259,7 @@ Scope {
                     model: [
                         { icon: "󰄀", label: "Screenshot [S]", popup: "screenshot" },
                         { icon: "󰅌", label: "Clipboard [V]", popup: "clipboard" },
-                        { icon: "󰌌", label: "Shortcuts [/]", popup: "keybinds" }
+                        { icon: "󰌌", label: "Keybinds [/]", popup: "keybinds" }
                     ]
                     delegate: OptionTile {
                         required property var modelData

@@ -59,6 +59,15 @@ Singleton {
         Quickshell.execDetached(cmd.concat(["--"], argv));
     }
 
+    // ---- Pinned apps ----
+    function togglePin(appId) {
+        const p = settings.pinnedApps.slice();
+        const i = p.indexOf(appId);
+        if (i >= 0) p.splice(i, 1);
+        else p.push(appId);
+        settings.pinnedApps = p;
+    }
+
     // ---- Persisted settings (~/.local/state/quickshell/...) ----
     property alias settings: adapter
     property bool settingsLoaded: false
@@ -78,6 +87,11 @@ Singleton {
             property bool nightLight: false      // legacy; superseded by nightLightMode
             property string nightLightMode: ""    // "off" | "auto" | "on"
             property int nightLightTemp: 4000
+            // Apps pinned to the Windows taskbar and the macOS dock (desktop entry ids)
+            property var pinnedApps: ["kitty", "org.mozilla.firefox"]
+            // Apps pinned to the Start menu (missing ones are skipped)
+            property var startPinned: ["kitty", "org.mozilla.firefox", "chromium-browser", "thunar", "nvim", "mpv",
+                "org.pulseaudio.pavucontrol", "blueman-manager", "system-config-printer"]
             // { "<app name>": { count: n, last: epochMs } }
             property var launchStats: ({})
         }

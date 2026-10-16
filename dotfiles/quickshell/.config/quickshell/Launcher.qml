@@ -44,8 +44,15 @@ Scope {
 
     readonly property var filteredApps: {
         if (calcResult !== "" || query.trim().startsWith("=")) return [];
+        return search(query);
+    }
+
+    // App search shared with the Start menu: fuzzy over name, generic name,
+    // command, comment and keywords, nudged by frecency. An empty query lists
+    // every app, most used first.
+    function search(text) {
         const all = DesktopEntries.applications.values.filter(app => !app.noDisplay);
-        const q = query.trim();
+        const q = text.trim();
         if (q === "") {
             return all.slice().sort((a, b) => (frecency(b) - frecency(a)) || a.name.localeCompare(b.name));
         }
@@ -75,17 +82,26 @@ Scope {
             return;
         }
         if (selectedIndex >= 0 && selectedIndex < filteredApps.length) {
-            const app = filteredApps[selectedIndex];
-            recordLaunch(app);
-            const argv = [];
-            for (let i = 0; i < app.command.length; i++) argv.push(app.command[i]);
-            if (argv.length === 0) return;
-            if (app.runInTerminal) ShellState.launchInTerminal(argv);
-            else ShellState.launch(argv, app.workingDirectory);
+            launchApp(filteredApps[selectedIndex]);
             return;
         }
         // No match: run the text as a shell command.
         if (text !== "" && !text.startsWith("=")) ShellState.launch(["sh", "-c", text]);
+    }
+
+    function show() {
+        if (Desktop.mode === "windows") ShellState.openPopup("start", undefined, 0);
+        else ShellState.openPopup("launcher");
+    }
+
+    // Start a desktop entry (and count it for frecency)
+    function launchApp(app) {
+        recordLaunch(app);
+        const argv = [];
+        for (let i = 0; i < app.command.length; i++) argv.push(app.command[i]);
+        if (argv.length === 0) return;
+        if (app.runInTerminal) ShellState.launchInTerminal(argv);
+        else ShellState.launch(argv, app.workingDirectory);
     }
 
     function move(delta) {
@@ -103,10 +119,14 @@ Scope {
 
     IpcHandler {
         target: "launcher"
-        function open() { ShellState.openPopup("launcher"); }
-        function show() { ShellState.openPopup("launcher"); }
-        function hide() { ShellState.closePopup("launcher"); }
-        function toggle() { ShellState.togglePopup("launcher"); }
+        // In Windows mode, the launcher key (Super+Space) opens the Start menu
+        function open() { launcherScope.show(); }
+        function show() { launcherScope.show(); }
+        function hide() { ShellState.closePopup("launcher"); ShellState.closePopup("start"); }
+        function toggle() {
+            if (ShellState.activePopup === "launcher" || ShellState.activePopup === "start") hide();
+            else launcherScope.show();
+        }
     }
 
     ShellPopup {

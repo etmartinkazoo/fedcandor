@@ -10,6 +10,10 @@ import Quickshell.Services.Pam
 // runs for idle, before-sleep and `loginctl lock-session`; it waits for
 // isSecure() so suspend can't race the lock.
 // Authenticates through the same PAM stack as swaylock (/etc/pam.d/swaylock).
+//
+// Fingerprint: when fprintd has fingers enrolled for the user, a second PAM
+// conversation (pam/fingerprint, fingerprint only) runs alongside the password
+// one, so either unlocks. Without a reader or enrolled fingers it never starts.
 Scope {
     id: lockScope
 
@@ -18,6 +22,12 @@ Scope {
     property bool busy: false
     readonly property bool locked: sessionLock.locked
     readonly property string userName: Quickshell.env("USER") || ""
+
+    // Fingerprint
+    property bool fingerprintReady: false
+    property string fingerprintStatus: ""
+    property int fingerprintAttempts: 0
+    readonly property int maxFingerprintAttempts: 5
 
     signal clearInputs()
 
@@ -28,6 +38,73 @@ Scope {
         busy = false;
         ShellState.closePopup();
         sessionLock.locked = true;
+        fingerprintReady = false;
+        fingerprintStatus = "";
+        fingerprintAttempts = 0;
+        fprintCheck.running = true;
+    }
+
+    function startFingerprint() {
+        if (!sessionLock.locked || !fingerprintReady || fpPam.active) return;
+        if (fingerprintAttempts >= maxFingerprintAttempts) {
+            fingerprintStatus = "Fingerprint paused: use your password";
+            return;
+        }
+        fingerprintAttempts++;
+        if (!fpPam.start()) fingerprintStatus = "";
+    }
+
+    function unlocked() {
+        if (fpPam.active) fpPam.abort();
+        fpRetry.stop();
+        sessionLock.locked = false;
+        finish("");
+        fingerprintStatus = "";
+    }
+
+    // Enrolled fingers look like " - #0: right-index-finger"
+    Process {
+        id: fprintCheck
+        command: ["fprintd-list", lockScope.userName]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                lockScope.fingerprintReady = /#\d+:/.test(text);
+                if (lockScope.fingerprintReady) lockScope.startFingerprint();
+            }
+        }
+    }
+
+    PamContext {
+        id: fpPam
+        configDirectory: Quickshell.shellPath("pam")
+        config: "fingerprint"
+        user: lockScope.userName
+
+        onPamMessage: {
+            if (fpPam.responseRequired) fpPam.respond("");
+            else if (fpPam.message !== "") lockScope.fingerprintStatus = fpPam.message;
+        }
+
+        onCompleted: function(result) {
+            if (result === PamResult.Success) {
+                lockScope.unlocked();
+            } else {
+                lockScope.fingerprintStatus = "Fingerprint not recognized";
+                fpRetry.restart();
+            }
+        }
+
+        onError: function(err) {
+            lockScope.fingerprintStatus = "";
+            fpRetry.restart();
+        }
+    }
+
+    // Start listening again after a miss or a timeout
+    Timer {
+        id: fpRetry
+        interval: 1500
+        onTriggered: lockScope.startFingerprint()
     }
 
     function tryUnlock() {
@@ -58,8 +135,7 @@ Scope {
 
         onCompleted: function(result) {
             if (result === PamResult.Success) {
-                sessionLock.locked = false;
-                lockScope.finish("");
+                lockScope.unlocked();
             } else {
                 lockScope.finish(result === PamResult.MaxTries ? "Too many attempts" : "Wrong password");
             }
@@ -159,7 +235,8 @@ Scope {
                     Text {
                         width: parent.width
                         horizontalAlignment: Text.AlignHCenter
-                        text: lockScope.status !== "" ? lockScope.status : "Enter to unlock"
+                        text: lockScope.status !== "" ? lockScope.status
+                            : (lockScope.fingerprintReady ? (lockScope.fingerprintStatus || "Touch the fingerprint reader") + ", or type your password" : "Enter to unlock")
                         color: lockScope.status !== "" && !lockScope.busy ? Theme.borderCritical : Theme.textMuted
                         font.family: Theme.fontFamily
                         font.pixelSize: Theme.fontCaption

@@ -21,6 +21,17 @@ Scope {
 
     function setDnd(on) { ShellState.settings.dnd = on; }
 
+    // Badge count for an app's icon: its notifications since you last
+    // switched to it.
+    function countFor(appId) {
+        const since = WindowList.lastFocused[appId] ?? 0;
+        const name = WindowList.nameFor(appId).toLowerCase();
+        const id = appId.toLowerCase();
+        return history.filter(n => (n.ts ?? 0) > since
+            && ((n.desktopEntry && n.desktopEntry.toLowerCase() === id)
+                || (n.appName && (n.appName.toLowerCase() === name || n.appName.toLowerCase() === id)))).length;
+    }
+
     PersistentProperties {
         id: persist
         reloadableId: "notificationHistory"
@@ -86,6 +97,8 @@ Scope {
                 summary: notification.summary || "Notification",
                 body: notification.body || "",
                 appName: notification.appName || "",
+                desktopEntry: notification.desktopEntry || "",
+                ts: Date.now(),
                 critical: critical,
                 time: h12 + ":" + mins + ampm
             }].concat(notifScope.history.slice(0, 49));

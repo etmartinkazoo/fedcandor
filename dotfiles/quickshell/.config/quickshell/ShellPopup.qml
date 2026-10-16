@@ -2,7 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 
-// Shared popup frame. Either anchored above the bar (at ShellState.popupAnchorX)
+// Shared popup frame. Either anchored next to the bar (at ShellState.popupAnchorX)
 // or centered with a dimmed backdrop. Content goes into a FocusScope, so a child
 // with `focus: true` receives keys when the popup opens. Escape closes the popup
 // unless a child handles it first.
@@ -44,7 +44,8 @@ PanelWindow {
             ? (parent.width - width) / 2
             : Math.max(10, Math.min(parent.width - width - 10,
                 (ShellState.popupAnchorX >= 0 ? ShellState.popupAnchorX : parent.width - popup.defaultRightOffset) - width / 2))
-        y: popup.centered ? (parent.height - height) / 2 : parent.height - height - 44
+        y: popup.centered ? (parent.height - height) / 2
+            : (Desktop.barOnTop ? Desktop.popupInset : parent.height - height - Desktop.popupInset)
         width: popup.panelWidth
         height: popup.panelHeight > 0 ? popup.panelHeight : scope.childrenRect.height + Theme.paddingLarge * 2
         color: Theme.bgPanel

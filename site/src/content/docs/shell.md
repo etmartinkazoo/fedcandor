@@ -88,10 +88,55 @@ locked even if the shell were to crash.
 
 ## Everything else
 
-- **Themes**: five built in, plus any Omarchy theme; one switch recolors everything. See [Themes](../themes/).
+- **Themes**: seven built in, plus any Omarchy theme; one switch recolors everything. See [Themes](../themes/).
 - **Polkit dialog**: a themed password prompt when an app needs administrator rights.
 - **System tray**: icons and menus for apps that provide them.
-- **Keybinding cheatsheet**: <kbd>Super</kbd>+<kbd>/</kbd>, generated from your live sway configuration.
+- **Keybinds overlay**: <kbd>Super</kbd>+<kbd>.</kbd> (or <kbd>Super</kbd>+<kbd>/</kbd>) shows every binding on one
+  screen, grouped and filterable, generated from your live sway configuration.
+
+## Desktop modes
+
+The same shell comes in three layouts. Switch in Quick Settings (<kbd>M</kbd>), with
+<kbd>Super</kbd>+<kbd>Ctrl</kbd>+<kbd>M</kbd>, or with `fedcandor-mode set tiling|windows|macos`.
+
+| Mode | Bar | Windows |
+|------|-----|---------|
+| **Tiling** (default) | bar along the bottom | sway tiles them |
+| **Windows** | taskbar along the bottom: start button, app buttons, clock | float, with title bars |
+| **macOS** | bar along the top, plus a dock | float, with title bars |
+
+In Windows mode, the Fedora button at the left of the taskbar (or <kbd>Super</kbd>+<kbd>Space</kbd>)
+opens the Start menu: search, your pinned apps, your most used apps, and an A–Z list of all apps.
+Right-click any app there to pin or unpin it. The footer locks, suspends, or opens the power menu.
+
+In the taskbar and the dock, click an app to switch to it (click again to minimize; with several
+windows, clicks cycle through them), middle-click for a new window, and right-click to pin or unpin
+it. Minimized windows go to the scratchpad: <kbd>Super</kbd>+<kbd>M</kbd> minimizes,
+<kbd>Super</kbd>+<kbd>-</kbd> brings one back.
+
+The focused floating window gets minimize, maximize and close buttons in its title bar (traffic
+lights on the left in macOS mode). Double-click a title bar to maximize. Drag a window to a screen
+edge to snap it: left or right for half the screen, a corner for a quarter, the top to maximize.
+From the keyboard, <kbd>Super</kbd>+<kbd>Alt</kbd>+arrows snap the same way.
+
+Windows and macOS modes add Alt shortcuts for the focused window: <kbd>Alt</kbd>+<kbd>M</kbd> maximize,
+<kbd>Alt</kbd>+<kbd>F</kbd> fullscreen, <kbd>Alt</kbd>+<kbd>A</kbd> / <kbd>S</kbd> snap left / right,
+<kbd>Alt</kbd>+<kbd>H</kbd> hide the app, <kbd>Alt</kbd>+<kbd>W</kbd> close, and <kbd>Alt</kbd>+<kbd>D</kbd> show
+the desktop (again brings everything back). They take those keys from apps in these modes (Firefox's
+<kbd>Alt</kbd>+<kbd>D</kbd>, for example); tiling mode leaves Alt alone.
+
+Hover an app in the taskbar or dock to see its windows; a red badge counts its notifications since
+you last switched to it. <kbd>Super</kbd>+<kbd>Ctrl</kbd>+<kbd>↑</kbd> (or the taskbar's overview
+button) shows every window at once: type to filter, click to switch.
+
+In every mode, <kbd>Super</kbd>+<kbd>Tab</kbd> switches apps and <kbd>Alt</kbd>+<kbd>Tab</kbd>
+switches between the current app's windows: hold the modifier, tap <kbd>Tab</kbd> to move (<kbd>Shift</kbd> goes back), and
+release to switch.
+
+## Fingerprint
+
+With a fingerprint reader, enroll a finger (`fprintd-enroll`) and the lock screen accepts it
+alongside your password. `./install.sh fingerprint` also turns it on for admin prompts and `sudo`.
 
 ## Scripting it
 
