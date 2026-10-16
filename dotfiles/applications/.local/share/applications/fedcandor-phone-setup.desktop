@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Pair Phone
+GenericName=Phone Setup
+Comment=Connect your Android phone for texts (Google Messages) and calls (Bluetooth)
+Exec=qs ipc call phone setup
+Icon=kdeconnect
+Terminal=false
+Categories=Settings;HardwareSettings;
+Keywords=pair;phone;setup;bluetooth;messages;android;pixel;connect;

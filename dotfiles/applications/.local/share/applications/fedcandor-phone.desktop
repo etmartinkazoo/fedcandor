@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=Phone
+GenericName=Texts and Calls
+Comment=Text (SMS and RCS) and call from your Android phone
+Exec=qs ipc call phone open
+Icon=sm.puri.Chatty
+Terminal=false
+Categories=Network;InstantMessaging;Telephony;
+Keywords=phone;sms;rcs;text;messages;call;dial;android;pixel;
+Actions=setup;
+
+[Desktop Action setup]
+Name=Pair Phone
+Exec=qs ipc call phone setup
