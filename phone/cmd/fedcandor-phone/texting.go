@@ -95,15 +95,25 @@ type texting struct {
 }
 
 func newTexting(h *hub) *texting {
-	return &texting{
+	t := &texting{
 		hub:      h,
 		onState:  func() {},
 		state:    "connecting",
 		convs:    map[string]*gmproto.Conversation{},
 		notified: map[string]bool{},
 		events:   make(chan any, 512),
-		notifier: newNotifier(),
 	}
+	// A reply from a notification counts as reading the conversation, as on the phone.
+	t.notifier = newNotifier(func(conv, text string) error {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := t.send(ctx, conv, text, ""); err != nil {
+			return err
+		}
+		_ = t.markRead(ctx, conv)
+		return nil
+	})
+	return t
 }
 
 // loadCache fills the conversations and contacts from the local cache, so
@@ -716,10 +726,10 @@ func (t *texting) convert(conv *gmproto.Conversation, m *gmproto.Message) (Messa
 		return Message{}, false
 	}
 	out := Message{
-		ID:     m.GetMessageID(),
-		TS:     m.GetTimestamp() / 1000,
-		FromMe: m.GetMessageStatus().GetStatus() < 100,
-		Status: status,
+		ID:      m.GetMessageID(),
+		TS:      m.GetTimestamp() / 1000,
+		FromMe:  m.GetMessageStatus().GetStatus() < 100,
+		Status:  status,
 		Text:    text(m),
 		Media:   []Media{},
 		ReplyTo: m.GetReplyMessage().GetMessageID(),

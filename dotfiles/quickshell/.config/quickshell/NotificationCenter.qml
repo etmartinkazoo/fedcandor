@@ -65,7 +65,7 @@ Scope {
         const out = [];
         const acts = n.actions;
         for (let i = 0; i < acts.length; i++) {
-            if (acts[i].identifier !== "default" && acts[i].text !== "") out.push(acts[i]);
+            if (acts[i].identifier !== "default" && acts[i].identifier !== "inline-reply" && acts[i].text !== "") out.push(acts[i]);
         }
         return out;
     }
@@ -79,6 +79,7 @@ Scope {
         bodyImagesSupported: false
         actionsSupported: true
         actionIconsSupported: false
+        inlineReplySupported: true
         imageSupported: true
         persistenceSupported: true
 
@@ -147,9 +148,15 @@ Scope {
         exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay
         WlrLayershell.namespace: "quickshell-notifications"
+        // Keyboard only while typing an inline reply.
+        WlrLayershell.keyboardFocus: replying ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
         implicitWidth: 360
         implicitHeight: toastCol.implicitHeight
         visible: !notifScope.active && server.trackedNotifications.values.length > 0
+        onVisibleChanged: if (!visible) replying = null
+
+        // The notification whose reply box is open (one at a time).
+        property var replying: null
 
         // Diffing model keeps existing toasts (and their timers) alive when a new one arrives.
         ScriptModel {
@@ -170,6 +177,8 @@ Scope {
                     readonly property bool critical: modelData.urgency === Notif.NotificationUrgency.Critical
                     readonly property var defAction: notifScope.defaultAction(modelData)
                     readonly property var buttons: notifScope.buttonActions(modelData)
+                    readonly property bool replyOpen: toastPanel.replying === modelData
+                    Component.onDestruction: if (toastPanel.replying === modelData) toastPanel.replying = null
                     width: toastCol.width
                     height: toastBody.implicitHeight + Theme.paddingMedium * 2
                     color: critical ? Theme.bgCritical : (toastMouse.containsMouse ? Theme.bgSelected : Theme.bgPanel)
@@ -191,7 +200,7 @@ Scope {
 
                     Timer {
                         interval: Math.max(1000, notifScope.timeoutMs(toast.modelData))
-                        running: notifScope.timeoutMs(toast.modelData) > 0 && !toastMouse.containsMouse
+                        running: notifScope.timeoutMs(toast.modelData) > 0 && !toastMouse.containsMouse && !toast.replyOpen
                         onTriggered: toast.modelData.expire()
                     }
 
@@ -259,8 +268,14 @@ Scope {
                             Flow {
                                 width: parent.width
                                 spacing: Theme.spacingSmall + 2
-                                visible: toast.buttons.length > 0
+                                visible: (toast.buttons.length > 0 || toast.modelData.hasInlineReply) && !toast.replyOpen
                                 topPadding: 2
+
+                                SmallButton {
+                                    visible: toast.modelData.hasInlineReply
+                                    text: "Reply"
+                                    onClicked: toastPanel.replying = toast.modelData
+                                }
 
                                 Repeater {
                                     model: toast.buttons
@@ -270,6 +285,26 @@ Scope {
                                         onClicked: modelData.invoke()
                                     }
                                 }
+                            }
+
+                            // Inline reply: Enter sends, Esc closes.
+                            ThemedField {
+                                id: replyField
+                                width: parent.width
+                                height: 34
+                                visible: toast.replyOpen
+                                font.pixelSize: Theme.fontNormal
+                                placeholderText: toast.modelData.inlineReplyPlaceholder || "Reply"
+                                onVisibleChanged: {
+                                    if (visible) forceActiveFocus();
+                                    else text = "";
+                                }
+                                onAccepted: {
+                                    if (text.trim() === "") return;
+                                    toast.modelData.sendInlineReply(text);
+                                    toastPanel.replying = null;
+                                }
+                                Keys.onEscapePressed: toastPanel.replying = null
                             }
                         }
                     }
@@ -391,7 +426,7 @@ Scope {
 
             Hint {
                 id: notifHint
-                text: "[D] DND • [C] clear • click to remove • toast: click = open, right-click = dismiss"
+                text: "[D] DND • [C] clear • click to remove • toast: click = open, right-click = dismiss, Reply = answer inline"
             }
         }
     }
