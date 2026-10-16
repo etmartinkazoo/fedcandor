@@ -24,7 +24,7 @@ Launched apps run in their own systemd scope, so restarting the shell never clos
 
 <kbd>Super</kbd>+<kbd>A</kbd> opens a chat on the left: a running conversation for thinking out loud about
 ideas, plans and writing. It keeps going between sessions; **NEW** starts over. Replies stream in and
-render Markdown. Select text in any app and an **Ask in chat** chip appears at the left edge for a few
+render Markdown. Select text in any app and an **Ask in chat** chip appears right above it for a few
 seconds (turn it off with the chip toggle in the chat header); <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>
 sends the selection directly.
 

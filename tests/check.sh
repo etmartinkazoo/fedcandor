@@ -295,11 +295,17 @@ fi
 
 # ------------------------------------------- chat: selection chip ----
 if [ $QUICK = 0 ] && command -v wl-copy >/dev/null; then
+    # The pointer rests where a selection would end; the chip should appear
+    # just above it
+    mouse move 700 500 sleep 3 &
+    mp=$!
+    sleep 0.3
     wl-copy --primary "Selected text: café ünïcode, with a second line" &
     wlcopy=$!
-    sleep 1.4
+    sleep 1.6
     shot "chat-chip"
-    mouse move 60 400 sleep 0.2 click
+    wait $mp
+    mouse move 700 470 sleep 0.2 click
     sleep 0.8
     shot "chat-from-selection"
     ipc chat hide

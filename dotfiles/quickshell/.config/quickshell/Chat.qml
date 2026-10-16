@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
+import Quickshell.I3
 import Quickshell.Wayland
 
 // Side chat (Super+A): a persistent conversation for ideas, plans, writing.
@@ -12,9 +13,9 @@ import Quickshell.Wayland
 // free DeepSeek model. It's conversation only: every tool request is
 // rejected, so the model never runs commands or reads files.
 //
-// Select text anywhere and an "Ask in chat" chip appears at the left edge for
-// a few seconds; Super+Shift+A sends the selection directly. Selections stay
-// in memory and only reach the chat when you click.
+// Select text anywhere and an "Ask in chat" chip appears right above it for a
+// few seconds; Super+Shift+A sends the selection directly. Selections stay in
+// memory and only reach the chat when you click.
 Scope {
     id: chat
 
@@ -137,13 +138,80 @@ Scope {
         }
     }
 
-    // Wait for the selection to settle (it changes while dragging)
+    // Wait for the selection to settle (it changes while dragging), then find
+    // where it ended: the pointer
     Timer {
         id: chipDelay
         interval: 600
         onTriggered: {
             const t = chip.pending.trim();
-            if (t.length >= 3 && t !== chip.text && !chat.active && ShellState.activePopup === "") chip.show(t);
+            if (t.length >= 3 && t !== chip.text && !chat.active && ShellState.activePopup === "") probe.start(t);
+        }
+    }
+
+    // sway won't say where the pointer is, but it tells the surface under the
+    // pointer. So for a moment an invisible full-screen layer maps on each
+    // screen, and the one the pointer is over reports the spot. Then it's
+    // gone (a few frames; the app under it sees the pointer leave and come
+    // back).
+    QtObject {
+        id: probe
+        property bool active: false
+        property string text: ""
+        function start(t) {
+            text = t;
+            active = true;
+            probeTimeout.restart();
+            nudge.restart();
+        }
+        function found(screen, x, y) {
+            if (!active) return;
+            active = false;
+            probeTimeout.stop();
+            chip.showAt(text, screen, x, y);
+        }
+    }
+
+    // sway only tells a surface about the pointer when the pointer moves: once
+    // the probe is up, move it 1px and straight back (it ends where it was)
+    Timer {
+        id: nudge
+        interval: 30
+        onTriggered: if (probe.active) I3.dispatch("seat - cursor move 1 0, seat - cursor move -1 0")
+    }
+
+    Timer {
+        id: probeTimeout
+        interval: 250
+        // No pointer report (e.g. a keyboard-only session): fall back to the
+        // left edge of the focused screen
+        onTriggered: if (probe.active) {
+            probe.active = false;
+            chip.showAt(probe.text, ShellState.focusedScreen, -1, -1);
+        }
+    }
+
+    Variants {
+        model: Quickshell.screens
+        PanelWindow {
+            id: probeWin
+            required property var modelData
+            screen: modelData
+            visible: probe.active
+            color: "transparent"
+            anchors { top: true; bottom: true; left: true; right: true }
+            exclusionMode: ExclusionMode.Ignore
+            WlrLayershell.layer: WlrLayer.Overlay
+            WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+            WlrLayershell.namespace: "fedcandor-pointer-probe"
+
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                acceptedButtons: Qt.NoButton
+                onContainsMouseChanged: if (containsMouse) probe.found(probeWin.modelData, mouseX, mouseY)
+                onPositionChanged: function(m) { probe.found(probeWin.modelData, m.x, m.y); }
+            }
         }
     }
 
@@ -178,8 +246,12 @@ Scope {
         property string text: ""
         property bool shown: false
 
-        function show(t) {
+        // Just above the point (x, y) on `scr`; x < 0 means unknown: left edge
+        property var at: null
+        function showAt(t, scr, x, y) {
             text = t;
+            at = x < 0 ? null : { x: x, y: y };
+            screen = scr;
             shown = true;
             chipHide.restart();
         }
@@ -189,10 +261,17 @@ Scope {
         }
 
         screen: ShellState.focusedScreen
+        readonly property real sw: screen ? screen.width : 1280
+        readonly property real sh: screen ? screen.height : 800
         visible: shown
         color: "transparent"
-        anchors { left: true }
-        margins { left: Desktop.edgeGap }
+        anchors { top: true; left: true }
+        margins {
+            // Centred over the point, a little above it; kept on screen
+            left: chip.at ? Math.max(Desktop.edgeGap, Math.min(chip.sw - chipBox.width - Desktop.edgeGap, chip.at.x - chipBox.width / 2)) : Desktop.edgeGap
+            top: chip.at ? (chip.at.y - chipBox.height - 14 >= Desktop.edgeGap ? chip.at.y - chipBox.height - 14 : chip.at.y + 22)
+                         : (chip.sh - chipBox.height) / 2
+        }
         implicitWidth: chipBox.width
         implicitHeight: chipBox.height
         exclusionMode: ExclusionMode.Ignore
