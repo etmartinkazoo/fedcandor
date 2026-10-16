@@ -254,8 +254,6 @@ Scope {
                 width: parent.width
                 height: 200
                 color: Theme.bgItem
-                border.color: Theme.borderSubtle
-                border.width: Theme.borderWidth
                 radius: Theme.radius
                 clip: true
 
@@ -281,8 +279,8 @@ Scope {
                         width: modelData.width * canvas.k
                         height: modelData.height * canvas.k
                         color: isSel ? Theme.bgSelected : Theme.bgPanel
-                        border.color: isSel ? Theme.accent : Theme.border
-                        border.width: isSel ? 2 : Theme.borderWidth
+                        border.color: Theme.accent
+                        border.width: isSel ? 2 : 0
                         radius: Theme.radius
 
                         Column {
@@ -417,8 +415,6 @@ Scope {
                 width: parent.width
                 height: Theme.rowHeight + Theme.paddingMedium
                 color: disp.countdown > 0 ? Theme.bgSelected : "transparent"
-                border.color: disp.countdown > 0 ? Theme.accent : "transparent"
-                border.width: Theme.borderWidth
                 radius: Theme.radius
 
                 RowLayout {

@@ -26,8 +26,7 @@ Row {
             width: Desktop.pillHeight
             height: Desktop.pillHeight
             color: trayMouse.containsMouse ? Theme.bgSelected : Theme.bgItem
-            border.color: Theme.borderSubtle
-            border.width: Theme.borderWidth
+            border.width: 0
             radius: Theme.radius
 
             IconImage {
@@ -99,6 +98,14 @@ Row {
         onRightClicked: area.tools.bluetooth.togglePower()
     }
 
+    BarButton {
+        id: phoneBtn
+        icon: false
+        text: area.tools.phone.barText
+        highlighted: area.tools.phone.active || area.tools.phone.hasIncoming
+        critical: area.tools.phone.hasIncoming
+        onLeftClicked: area.toggle("phone", phoneBtn)
+    }
 
     BarButton {
         id: notifBtn

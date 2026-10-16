@@ -29,8 +29,8 @@ Rectangle {
     }
 
     color: selected || focused ? Theme.bgSelected : (hovered ? Theme.bgItem : "transparent")
-    border.color: selected ? Theme.accent : (focused ? Theme.border : (hovered ? Theme.borderSubtle : "transparent"))
-    border.width: selected ? 2 : Theme.borderWidth
+    border.color: Theme.accent
+    border.width: selected ? 2 : 0
     radius: Theme.radius
 
     IconImage {

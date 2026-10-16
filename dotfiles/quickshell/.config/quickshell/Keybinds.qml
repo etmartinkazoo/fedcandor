@@ -112,9 +112,7 @@ Scope {
         readonly property bool isCap: token.cap !== undefined
         implicitWidth: isCap ? Math.max(18, label.implicitWidth + 12) : label.implicitWidth
         implicitHeight: 18
-        color: isCap ? Theme.bgItem : "transparent"
-        border.color: Theme.border
-        border.width: isCap ? Theme.borderWidth : 0
+        color: isCap ? Theme.bgSelected : "transparent"
         radius: Theme.radius
 
         Text {

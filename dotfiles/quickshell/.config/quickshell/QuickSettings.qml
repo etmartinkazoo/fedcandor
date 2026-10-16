@@ -88,8 +88,6 @@ Scope {
                 width: parent.width
                 height: 48
                 color: themeMouse.containsMouse ? Theme.bgSelected : Theme.bgItem
-                border.color: Theme.border
-                border.width: Theme.borderWidth
                 radius: Theme.radius
 
                 RowLayout {

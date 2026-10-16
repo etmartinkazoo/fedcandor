@@ -16,8 +16,7 @@ Rectangle {
     height: 60
     opacity: enabled ? 1.0 : 0.45
     color: selected || (hovered && enabled) ? Theme.bgSelected : Theme.bgItem
-    border.color: selected ? Theme.border : Theme.borderSubtle
-    border.width: Theme.borderWidth
+    border.width: 0
     radius: Theme.radius
 
     Column {

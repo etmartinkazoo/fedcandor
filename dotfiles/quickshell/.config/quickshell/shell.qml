@@ -20,6 +20,7 @@ ShellRoot {
     Battery { id: batteryTool }
     Media { id: mediaTool }
     NotificationCenter { id: notifCenter }
+    Phone { id: phoneTool; btTool: btMenu }
     BluetoothMenu { id: btMenu }
     WifiMenu { id: wifiMenu }
     Caffeine {
@@ -30,6 +31,7 @@ ShellRoot {
     }
     NightLight { id: nightLightTool }
     Keybinds { id: keybindsTool }
+    Dictation { id: dictationTool }
     SysMon { id: sysMon }
     LockScreen { id: lockScreen }
     Polkit { id: polkitAgent }
@@ -51,7 +53,7 @@ ShellRoot {
     // What the bars need from the tools above
     readonly property var tools: ({
         launcher: launcher, screenshot: screenshotTool, audio: audioTool, media: mediaTool,
-        notifications: notifCenter, bluetooth: btMenu, wifi: wifiMenu, battery: batteryTool,
+        notifications: notifCenter, phone: phoneTool, bluetooth: btMenu, wifi: wifiMenu, battery: batteryTool,
         system: systemPanel, quick: quickSettings, themes: themePicker, overview: overview, start: startMenu
     })
 

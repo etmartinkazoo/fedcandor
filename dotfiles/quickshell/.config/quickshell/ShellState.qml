@@ -96,6 +96,10 @@ Singleton {
             property bool chatSelectionChip: true
             // { "<app name>": { count: n, last: epochMs } }
             property var launchStats: ({})
+            // Phone panel favorites: ordered conversation ids (max 6), seeded once
+            // from Google Messages' pins.
+            property var phoneFavorites: []
+            property bool phoneFavoritesSeeded: false
         }
     }
 }

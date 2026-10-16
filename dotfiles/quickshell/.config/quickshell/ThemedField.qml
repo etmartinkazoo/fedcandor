@@ -11,8 +11,7 @@ TextField {
     placeholderTextColor: Theme.textPlaceholder
     background: Rectangle {
         color: Theme.bgItem
-        border.color: Theme.border
-        border.width: Theme.borderWidth
+        border.width: 0
         radius: Theme.radius
     }
 }

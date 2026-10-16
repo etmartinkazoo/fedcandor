@@ -232,7 +232,9 @@ Scope {
                         label: armed ? "Again" : modelData.label
                         sublabel: "[" + modelData.key + "]"
                         selected: armed
-                        border.color: armed ? Theme.borderCritical : (hovered ? Theme.border : Theme.borderSubtle)
+                        // Red outline: press again to confirm
+                        border.color: Theme.borderCritical
+                        border.width: armed ? Theme.borderWidth : 0
                         color: armed ? Theme.bgCritical : (hovered ? Theme.bgSelected : Theme.bgItem)
                         onClicked: sys.trigger(index)
                     }

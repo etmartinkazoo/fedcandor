@@ -104,8 +104,8 @@ PopupWindow {
                     width: pv.cardWidth
                     height: shotBox.height + 36
                     color: cardMouse.containsMouse ? Theme.bgSelected : Theme.bgItem
-                    border.color: card.modelData.focused ? Theme.accent : (cardMouse.containsMouse ? Theme.border : Theme.borderSubtle)
-                    border.width: Theme.borderWidth
+                    border.color: Theme.accent
+                    border.width: card.modelData.focused ? 2 : 0
                     radius: Theme.radius
 
                     Rectangle {
@@ -172,8 +172,6 @@ PopupWindow {
                         width: 24
                         height: 24
                         color: closeMouse.containsMouse ? Theme.red : Theme.bgPanel
-                        border.color: Theme.border
-                        border.width: Theme.borderWidth
                         radius: Theme.radius
 
                         Text {

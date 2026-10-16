@@ -11,8 +11,8 @@ Rectangle {
     implicitHeight: 24
     implicitWidth: label.implicitWidth + 14
     color: highlighted || mouse.containsMouse ? Theme.bgSelected : Theme.bgItem
-    border.color: critical ? Theme.borderCritical : Theme.border
-    border.width: Theme.borderWidth
+    border.color: Theme.borderCritical
+    border.width: critical ? Theme.borderWidth : 0
     radius: Theme.radius
 
     Text {

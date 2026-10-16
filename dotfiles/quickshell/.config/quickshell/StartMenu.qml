@@ -92,8 +92,6 @@ Scope {
         readonly property bool selected: start.index === cellIndex
         height: 84
         color: selected || cellMouse.containsMouse ? Theme.bgSelected : "transparent"
-        border.color: selected ? Theme.accent : (cellMouse.containsMouse ? Theme.borderSubtle : "transparent")
-        border.width: Theme.borderWidth
         radius: Theme.radius
 
         Column {
@@ -356,8 +354,6 @@ Scope {
                 width: parent.width
                 height: 44
                 color: Theme.bgItem
-                border.color: Theme.borderSubtle
-                border.width: Theme.borderWidth
                 radius: Theme.radius
 
                 RowLayout {

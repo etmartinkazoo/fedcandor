@@ -187,9 +187,7 @@ Scope {
             Rectangle {
                 width: parent.width
                 height: statusCol.implicitHeight + Theme.paddingLarge * 2
-                color: Theme.bgItem
-                border.color: upd.attention ? Theme.accent : Theme.borderSubtle
-                border.width: Theme.borderWidth
+                color: upd.attention ? Theme.bgSelected : Theme.bgItem
                 radius: Theme.radius
 
                 RowLayout {

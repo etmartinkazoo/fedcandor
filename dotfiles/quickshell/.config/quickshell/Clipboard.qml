@@ -165,8 +165,7 @@ Scope {
                 height: 120
                 visible: clipScope.previewPath !== ""
                 color: Theme.bgItem
-                border.color: Theme.borderSubtle
-                border.width: Theme.borderWidth
+                border.width: 0
 
                 Image {
                     anchors.fill: parent

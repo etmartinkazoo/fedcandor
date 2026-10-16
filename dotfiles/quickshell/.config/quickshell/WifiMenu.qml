@@ -245,8 +245,6 @@ Scope {
         signal clicked()
         height: Theme.rowHeightCompact
         color: selected || dbMouse.containsMouse ? Theme.bgSelected : Theme.bgItem
-        border.color: selected ? Theme.border : Theme.borderSubtle
-        border.width: Theme.borderWidth
         radius: Theme.radius
 
         Text {
@@ -279,8 +277,6 @@ Scope {
 
         height: Theme.rowHeight
         color: Theme.bgItem
-        border.color: Theme.border
-        border.width: Theme.borderWidth
         radius: Theme.radius
 
         TextField {

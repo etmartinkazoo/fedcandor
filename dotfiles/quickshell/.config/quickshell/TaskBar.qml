@@ -28,8 +28,7 @@ PanelWindow {
     Rectangle {
         anchors.fill: parent
         color: Theme.bgPanel
-        border.color: Theme.border
-        border.width: Theme.borderWidth
+        border.width: 0   // flush against the screen edge: no frame
         radius: Theme.radius
 
         RowLayout {

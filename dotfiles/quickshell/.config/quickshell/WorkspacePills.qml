@@ -26,7 +26,6 @@ Row {
             highlighted: modelData.active
             critical: modelData.urgent
             dim: !modelData.active
-            border.color: modelData.urgent ? Theme.borderCritical : (modelData.active ? Theme.border : Theme.borderSubtle)
             onLeftClicked: modelData.activate()
         }
     }

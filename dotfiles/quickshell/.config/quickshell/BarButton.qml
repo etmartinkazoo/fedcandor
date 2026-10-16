@@ -27,8 +27,8 @@ Rectangle {
     height: 24
     width: icon ? Math.max(28, label.implicitWidth + 12) : label.implicitWidth + 16
     color: highlighted || hovered ? Theme.bgSelected : Theme.bgItem
-    border.color: critical ? Theme.borderCritical : Theme.border
-    border.width: Theme.borderWidth
+    border.color: Theme.borderCritical
+    border.width: critical ? Theme.borderWidth : 0
     radius: Theme.radius
 
     Text {

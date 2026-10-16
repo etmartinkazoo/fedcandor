@@ -48,6 +48,8 @@ PanelWindow {
         onClicked: popup.close()
     }
 
+    Shadow { target: frame }
+
     Rectangle {
         id: frame
         x: popup.centered

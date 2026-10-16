@@ -214,8 +214,6 @@ Scope {
                         placeholderTextColor: Theme.textPlaceholder
                         background: Rectangle {
                             color: Theme.bgItem
-                            border.color: Theme.border
-                            border.width: Theme.borderWidth
                             radius: Theme.radius
                         }
                         onTextChanged: lockScope.password = text

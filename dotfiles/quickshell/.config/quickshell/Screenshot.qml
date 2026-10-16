@@ -242,8 +242,9 @@ Scope {
                 width: parent.width
                 height: 42
                 color: captureMouse.containsMouse ? Theme.bgSelected : Theme.bgItem
-                border.color: screenshotScope.isRecordMode ? Theme.borderCritical : Theme.border
-                border.width: Theme.borderWidth
+                // Red outline: this starts a recording
+                border.color: Theme.borderCritical
+                border.width: screenshotScope.isRecordMode ? Theme.borderWidth : 0
                 radius: Theme.radius
 
                 Text {

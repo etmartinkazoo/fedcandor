@@ -80,9 +80,14 @@ Singleton {
 
     // Geometry & Spacing
     readonly property int radius: 0
+    // Depth: soft shadows under floating surfaces (Shadow.qml).
+    readonly property color shadowColor: isLight ? Qt.rgba(0, 0, 0, 0.18) : Qt.rgba(0, 0, 0, 0.45)
+    readonly property int shadowBlur: 22
+    readonly property int shadowOffset: 4
+    readonly property int shadowMargin: shadowBlur + shadowOffset   // room a window leaves for the shadow
     readonly property int borderWidth: 1
     // An open panel is the active surface: it wears the accent border the
-    // focused window gives up while it is open (PanelFocus.qml), at the same 2px
+    // focused window gives up while it's open (PanelFocus.qml), at the same 2px
     readonly property int panelBorderWidth: 2
     readonly property int paddingSmall: 6
     readonly property int paddingMedium: 8

@@ -8,7 +8,7 @@
 set -euo pipefail
 source "$(dirname "$0")/../lib/common.sh"
 
-PACKAGES=(sway quickshell kitty foot swappy autostart systemd bin)
+PACKAGES=(sway quickshell kitty foot swappy autostart systemd bin applications)
 DOTFILES="$FEDCANDOR_ROOT/dotfiles"
 need_cmd stow
 

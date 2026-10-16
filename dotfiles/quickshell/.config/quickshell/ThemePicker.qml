@@ -136,8 +136,8 @@ Scope {
                                 width: (grid.width - grid.spacing * (picker.columns - 1)) / picker.columns
                                 height: preview.height + info.implicitHeight + 16
                                 color: Theme.bgItem
-                                border.color: isSelected ? Theme.accent : (isCurrent ? Theme.border : Theme.borderSubtle)
-                                border.width: isSelected ? 2 : Theme.borderWidth
+                                border.color: Theme.accent
+                                border.width: isSelected ? 2 : 0
                                 radius: Theme.radius
 
                                 // Preview: wallpaper, or a mini desktop drawn from the palette
@@ -316,8 +316,8 @@ Scope {
                     height: 72
                     color: Theme.bgItem
                     radius: Theme.radius
-                    border.color: isCurrent ? Theme.accent : (thumbMouse.containsMouse ? Theme.border : Theme.borderSubtle)
-                    border.width: isCurrent ? 2 : Theme.borderWidth
+                    border.color: Theme.accent
+                    border.width: isCurrent ? 2 : 0
 
                     Image {
                         anchors.fill: parent

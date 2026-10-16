@@ -103,11 +103,14 @@ input "type:touchpad" {
     bindsym $mod+Shift+v exec qs ipc call clipboard toggle
     bindsym $mod+Ctrl+v exec qs ipc call clipboard toggle
 
+    # Phone: texts and calls
+    bindsym $mod+p exec qs ipc call phone toggle
+
     # Dictation: hold to talk, or tap to start and tap again to stop
-    bindsym $mod+Shift+d exec ~/.local/bin/fedcandor-dictate press
+    bindsym --no-repeat $mod+Shift+d exec ~/.local/bin/fedcandor-dictate press
     bindsym --release $mod+Shift+d exec ~/.local/bin/fedcandor-dictate release
     # Dictation on the Copilot key (Shift+Super+F23)
-    bindsym $mod+Shift+F23 exec ~/.local/bin/fedcandor-dictate press
+    bindsym --no-repeat $mod+Shift+F23 exec ~/.local/bin/fedcandor-dictate press
     bindsym --release $mod+Shift+F23 exec ~/.local/bin/fedcandor-dictate release
 
     # Notification center
@@ -299,8 +302,10 @@ mode "resize" {
 }
 
 # Window borders & gaps (matching Quickshell Theme)
-default_border pixel 1
-default_floating_border pixel 1
+# 2px everywhere; only the focused window's is visible (the theme makes the
+# others transparent), since sway can't size borders by focus.
+default_border pixel 2
+default_floating_border pixel 2
 gaps inner 10
 gaps outer 0
 

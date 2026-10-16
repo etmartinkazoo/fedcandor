@@ -13,8 +13,9 @@ Rectangle {
 
     height: 36
     color: selected || hovered ? Theme.bgSelected : Theme.bgItem
-    border.color: critical ? Theme.borderCritical : (selected || outlined ? Theme.border : Theme.borderSubtle)
-    border.width: Theme.borderWidth
+    // No border inside a bordered popup; only alerts and explicit outlines get one.
+    border.color: critical ? Theme.borderCritical : Theme.border
+    border.width: critical || outlined ? Theme.borderWidth : 0
     radius: Theme.radius
 
     MouseArea {

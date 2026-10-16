@@ -156,8 +156,8 @@ Scope {
                             width: grid.cardWidth
                             height: thumb.height + 40
                             color: Theme.bgItem
-                            border.color: selected ? Theme.accent : (cardMouse.containsMouse ? Theme.border : Theme.borderSubtle)
-                            border.width: selected ? 2 : Theme.borderWidth
+                            border.color: Theme.accent
+                            border.width: selected ? 2 : 0
                             radius: Theme.radius
 
                             // Snapshot, or the app icon until it arrives
@@ -246,8 +246,6 @@ Scope {
                                 width: 26
                                 height: 26
                                 color: closeMouse.containsMouse ? Theme.red : Theme.bgPanel
-                                border.color: Theme.border
-                                border.width: Theme.borderWidth
                                 radius: Theme.radius
 
                                 Text {

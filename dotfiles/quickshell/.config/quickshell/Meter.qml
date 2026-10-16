@@ -10,8 +10,7 @@ Rectangle {
 
     height: 10
     color: Theme.bgItem
-    border.color: Theme.border
-    border.width: Theme.borderWidth
+    border.width: 0
     radius: Theme.radius
 
     Rectangle {

@@ -122,8 +122,6 @@ Scope {
                     Layout.preferredWidth: 72
                     Layout.preferredHeight: 72
                     color: Theme.bgItem
-                    border.color: Theme.border
-                    border.width: Theme.borderWidth
                     radius: Theme.radius
 
                     Text {
