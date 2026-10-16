@@ -263,6 +263,21 @@ Scope {
         Qt.callLater(() => searchInput.forceActiveFocus());
     }
 
+    // The tab row's "+": an empty number field on the current tab (search
+    // takes a number to text; the dial field calls it).
+    function startNew() {
+        setupOpen = false;
+        if (tab === "calls") {
+            dialField.text = "";
+            Qt.callLater(() => dialField.forceActiveFocus());
+            return;
+        }
+        if (currentConv) closeConversation();
+        if (showArchived) setArchivedView(false);
+        searchInput.text = "";
+        Qt.callLater(() => searchInput.forceActiveFocus());
+    }
+
     function startConversation(number) {
         request("newConversation", { number: number }, function(ok, d) {
             if (ok) {
@@ -1603,6 +1618,56 @@ Scope {
         }
     }
 
+    // Square icon button for the tab row; a count shows beside the icon.
+    component IconTab: Rectangle {
+        id: itab
+        property string glyph: ""
+        property string tooltip: ""
+        property int count: 0
+        property bool highlighted: false
+        signal clicked()
+
+        Tip {
+            target: itab
+            text: itab.tooltip
+            hovered: itMouse.containsMouse
+        }
+
+        implicitHeight: 28
+        implicitWidth: Math.max(28, itRow.implicitWidth + 16)
+        color: highlighted || itMouse.containsMouse ? Theme.bgSelected : Theme.bgItem
+        radius: Theme.radius
+
+        Row {
+            id: itRow
+            anchors.centerIn: parent
+            spacing: 5
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: itab.glyph
+                color: itab.highlighted ? Theme.textPrimary : Theme.textSecondary
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontIcon
+            }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: itab.count > 0
+                text: itab.count
+                color: Theme.accent
+                font.family: Theme.fontFamily
+                font.pixelSize: Theme.fontSmall
+                font.bold: true
+            }
+        }
+
+        MouseArea {
+            id: itMouse
+            anchors.fill: parent
+            hoverEnabled: true
+            onClicked: itab.clicked()
+        }
+    }
+
     component Keypad: GridLayout {
         id: kp
         signal pressed(string key)
@@ -1976,16 +2041,19 @@ Scope {
                         Layout.fillWidth: true
                         spacing: Theme.spacingSmall * 2
 
-                        SmallButton {
-                            text: "MESSAGES" + (phone.unreadCount > 0 ? "  " + phone.unreadCount : "") + "  [^1]"
+                        IconTab {
+                            glyph: "󰍩"
+                            tooltip: "Messages  (Ctrl+1)"
+                            count: phone.unreadCount
                             highlighted: phone.tab === "messages"
                             onClicked: {
                                 phone.setupOpen = false;
                                 phone.tab = "messages";
                             }
                         }
-                        SmallButton {
-                            text: "CALLS  [^2]"
+                        IconTab {
+                            glyph: "󰏲"
+                            tooltip: "Calls  (Ctrl+2)"
                             highlighted: phone.tab === "calls"
                             onClicked: {
                                 phone.setupOpen = false;
@@ -1993,6 +2061,11 @@ Scope {
                             }
                         }
                         Item { Layout.fillWidth: true }
+                        IconTab {
+                            glyph: "󰐕"
+                            tooltip: phone.tab === "calls" ? "New call" : "New message"
+                            onClicked: phone.startNew()
+                        }
                     }
 
                     // Body
