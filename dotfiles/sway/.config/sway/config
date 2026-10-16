@@ -14,10 +14,11 @@ set $term kitty
 set $menu qs ipc call launcher open
 
 ### Output configuration
-# Default background. Set your own wallpaper (and any other per-machine
-# settings) in ~/.config/sway/config.d/80-local.conf, which isn't tracked:
-#   output * bg ~/Pictures/wallpaper.jpg fill
-output * bg #121212 solid_color
+# The wallpaper is drawn by the shell and follows the theme, so sway's own
+# swaybg is disabled: an `output * bg` line would cover the theme wallpaper
+# after every sway reload. To use your own image with every theme:
+#   fedcandor-theme wallpaper ~/Pictures/wallpaper.jpg
+swaybg_command -
 #
 # Example configuration:
 #
@@ -61,72 +62,144 @@ input "type:touchpad" {
 
 ### Key bindings
 #
-# Basics:
-#
-    # Start a terminal
-    bindsym $mod+Return exec $term
-
-    # Start Firefox
-    bindsym $mod+Shift+Return exec firefox
-
-    # Kill focused window
-    bindsym $mod+q kill
-
-    # Start your launcher
-    bindsym $mod+d exec $menu
+# Each "## Section" heading groups the bindings below it in the keybinds overlay
+# (Super+. or Super+/). A "#" comment above a group of bindings describes them;
+# without one, the sway command describes itself. fedcandor keeps vim-style
+# H/J/K/L movement; where a key is free, bindings follow Omarchy's, so Omarchy
+# muscle memory carries over.
 
     # Drag floating windows by holding down $mod and left mouse button.
     # Resize them with right mouse button + $mod.
     # Despite the name, also works for non-floating windows.
-    # Change normal to inverse to use left mouse button for resizing and right
-    # mouse button for dragging.
     floating_modifier $mod normal
 
-    # Reload the configuration file
-    bindsym $mod+Shift+c reload
+## Apps
+    # Terminal
+    bindsym $mod+Return exec $term
 
-    # Clipboard history picker
+    # Browser
+    bindsym $mod+Shift+Return exec firefox
+    bindsym $mod+Shift+b exec firefox
+
+    # Editor (Neovim)
+    bindsym $mod+Shift+n exec $term nvim
+
+    # App launcher
+    bindsym $mod+space exec $menu
+    bindsym $mod+d exec $menu
+
+## Shell
+    # Keybinds overlay
+    bindsym $mod+period exec qs ipc call keybinds toggle
+    bindsym $mod+slash exec qs ipc call keybinds toggle
+
+    # Clipboard history
     bindsym $mod+Shift+v exec qs ipc call clipboard toggle
+    bindsym $mod+Ctrl+v exec qs ipc call clipboard toggle
 
     # Notification center
     bindsym $mod+n exec qs ipc call notifications toggle
 
-    # Keybind cheatsheet
-    bindsym $mod+slash exec qs ipc call keybinds toggle
+    # Clear all notifications
+    bindsym $mod+Shift+comma exec qs ipc call notifications clear
 
-    # Power & session menu
-    bindsym $mod+Shift+e exec qs ipc call power open
+    # Do not disturb
+    bindsym $mod+Ctrl+comma exec qs ipc call notifications toggleDnd
 
     # Theme picker
     bindsym $mod+Shift+t exec qs ipc call theme picker
-#
-# Moving around:
-#
-    # Move your focus around
+    bindsym $mod+Shift+Ctrl+space exec qs ipc call theme picker
+
+    # Next wallpaper
+    bindsym $mod+Ctrl+space exec qs ipc call theme bgNext
+
+    # Next desktop mode (tiling / Windows / macOS)
+    bindsym $mod+Ctrl+m exec ~/.local/bin/fedcandor-mode next
+
+    # Audio
+    bindsym $mod+Ctrl+a exec qs ipc call audio toggle
+
+    # Bluetooth
+    bindsym $mod+Ctrl+b exec qs ipc call bluetooth toggle
+
+    # Network
+    bindsym $mod+Ctrl+w exec qs ipc call wifi toggle
+
+    # Night light on/off
+    bindsym $mod+Ctrl+n exec qs ipc call nightlight togglePower
+
+    # Keep awake (caffeine)
+    bindsym $mod+Ctrl+i exec qs ipc call caffeine toggle
+
+## System
+    # Lock
+    bindsym $mod+Ctrl+l exec loginctl lock-session
+
+    # Power & session menu
+    bindsym $mod+Escape exec qs ipc call power open
+    bindsym $mod+Shift+e exec qs ipc call power open
+    bindsym $mod+Ctrl+p exec qs ipc call power open
+
+    # Reload sway
+    bindsym $mod+Shift+c reload
+
+## Windows
+    # Close window
+    bindsym $mod+q kill
+
+    # Fullscreen
+    bindsym $mod+f fullscreen
+
+    # Toggle floating
+    bindsym $mod+t floating toggle
+    bindsym $mod+Shift+space floating toggle
+
+    # Pop out (float, show on every workspace)
+    bindsym $mod+o floating toggle, sticky toggle
+
+    # Focus the parent container
+    bindsym $mod+a focus parent
+
+    # Snap floating window: halves, then quarters; up maximizes
+    bindsym $mod+Alt+Left exec qs ipc call window snap left
+    bindsym $mod+Alt+Right exec qs ipc call window snap right
+    bindsym $mod+Alt+Up exec qs ipc call window snap up
+    bindsym $mod+Alt+Down exec qs ipc call window snap down
+
+    # Switch apps (hold Super, tap Tab, release)
+    bindsym $mod+Tab exec qs ipc call switcher apps
+    bindsym $mod+Shift+Tab exec qs ipc call switcher appsBack
+
+    # Switch between this app's windows (hold Alt, tap Tab, release)
+    bindsym Alt+Tab exec qs ipc call switcher windows
+    bindsym Alt+Shift+Tab exec qs ipc call switcher windowsBack
+
+    # Minimize (Super+- brings it back)
+    bindsym $mod+m move scratchpad
+
+## Moving around
+    # Focus window in direction
     bindsym $mod+$left focus left
     bindsym $mod+$down focus down
     bindsym $mod+$up focus up
     bindsym $mod+$right focus right
-    # Or use $mod+[up|down|left|right]
     bindsym $mod+Left focus left
     bindsym $mod+Down focus down
     bindsym $mod+Up focus up
     bindsym $mod+Right focus right
 
-    # Move the focused window with the same, but add Shift
+    # Move window in direction
     bindsym $mod+Shift+$left move left
     bindsym $mod+Shift+$down move down
     bindsym $mod+Shift+$up move up
     bindsym $mod+Shift+$right move right
-    # Ditto, with arrow keys
     bindsym $mod+Shift+Left move left
     bindsym $mod+Shift+Down move down
     bindsym $mod+Shift+Up move up
     bindsym $mod+Shift+Right move right
-#
-# Workspaces:
-#
-    # Switch to workspace
+
+## Workspaces
+    # Switch to workspace 1-10
     bindsym $mod+1 workspace number 1
     bindsym $mod+2 workspace number 2
     bindsym $mod+3 workspace number 3
@@ -137,7 +210,8 @@ input "type:touchpad" {
     bindsym $mod+8 workspace number 8
     bindsym $mod+9 workspace number 9
     bindsym $mod+0 workspace number 10
-    # Move focused container to workspace
+
+    # Move window to workspace 1-10
     bindsym $mod+Shift+1 move container to workspace number 1
     bindsym $mod+Shift+2 move container to workspace number 2
     bindsym $mod+Shift+3 move container to workspace number 3
@@ -148,69 +222,65 @@ input "type:touchpad" {
     bindsym $mod+Shift+8 move container to workspace number 8
     bindsym $mod+Shift+9 move container to workspace number 9
     bindsym $mod+Shift+0 move container to workspace number 10
-    # Note: workspaces can have any name you want, not just numbers.
-    # We just use 1-10 as the default.
-#
-# Layout stuff:
-#
-    # You can "split" the current object of your focus with
-    # $mod+b or $mod+v, for horizontal and vertical splits
-    # respectively.
+
+    # Next / previous workspace
+    bindsym $mod+Ctrl+Right workspace next_on_output
+    bindsym $mod+Ctrl+Left workspace prev_on_output
+
+    # Overview: every window at a glance
+    bindsym $mod+Ctrl+Up exec qs ipc call overview toggle
+
+    # Back to the last workspace
+    bindsym $mod+Ctrl+Tab workspace back_and_forth
+
+    # Move workspace to another monitor
+    bindsym $mod+Shift+Alt+Left move workspace to output left
+    bindsym $mod+Shift+Alt+Right move workspace to output right
+    bindsym $mod+Shift+Alt+Up move workspace to output up
+    bindsym $mod+Shift+Alt+Down move workspace to output down
+
+## Layout
+    # Split horizontally / vertically
     bindsym $mod+b splith
     bindsym $mod+v splitv
 
-    # Switch the current container between different layout styles
+    # Stacked layout
     bindsym $mod+s layout stacking
+
+    # Tabbed layout
     bindsym $mod+w layout tabbed
+
+    # Toggle split direction
     bindsym $mod+e layout toggle split
 
-    # Make the current focus fullscreen
-    bindsym $mod+f fullscreen
+    # Focus tiling / floating windows
+    bindsym $mod+Shift+a focus mode_toggle
 
-    # Toggle the current focus between tiling and floating mode
-    bindsym $mod+Shift+space floating toggle
+    # Resize mode
+    bindsym $mod+r mode "resize"
 
-    # Swap focus between the tiling area and the floating area
-    bindsym $mod+space focus mode_toggle
+## Scratchpad
+    # Show / hide the scratchpad
+    bindsym $mod+minus scratchpad show
 
-    # Move focus to the parent container
-    bindsym $mod+a focus parent
-#
-# Scratchpad:
-#
-    # Sway has a "scratchpad", which is a bag of holding for windows.
-    # You can send windows there and get them back later.
-
-    # Move the currently focused window to the scratchpad
+    # Send window to the scratchpad
     bindsym $mod+Shift+minus move scratchpad
 
-    # Show the next scratchpad window or hide the focused scratchpad window.
-    # If there are multiple scratchpad windows, this command cycles through them.
-    bindsym $mod+minus scratchpad show
-#
-# Resizing containers:
-#
 mode "resize" {
-    # left will shrink the containers width
-    # right will grow the containers width
-    # up will shrink the containers height
-    # down will grow the containers height
+    # Shrink / grow width and height
     bindsym $left resize shrink width 10px
     bindsym $down resize grow height 10px
     bindsym $up resize shrink height 10px
     bindsym $right resize grow width 10px
-
-    # Ditto, with arrow keys
     bindsym Left resize shrink width 10px
     bindsym Down resize grow height 10px
     bindsym Up resize shrink height 10px
     bindsym Right resize grow width 10px
 
-    # Return to default mode
+    # Leave resize mode
     bindsym Return mode "default"
     bindsym Escape mode "default"
 }
-bindsym $mod+r mode "resize"
 
 # Window borders & gaps (matching Quickshell Theme)
 default_border pixel 1

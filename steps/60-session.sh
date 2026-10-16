@@ -9,7 +9,7 @@ if [ ! -e "$local_conf" ]; then
     mkdir -p "$(dirname "$local_conf")"
     cat > "$local_conf" <<'CONF'
 # Per-machine sway settings (not tracked by fedcandor). Examples:
-# output * bg ~/Pictures/wallpaper.jpg fill
+# (wallpaper: use `fedcandor-theme wallpaper PATH`; sway's own bg is off)
 # output eDP-1 scale 1.5
 # input "type:keyboard" { xkb_layout us; xkb_options ctrl:nocaps }
 CONF

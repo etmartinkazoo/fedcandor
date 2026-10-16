@@ -10,13 +10,13 @@ changes and your changes never block updates.
 
 ## Per-machine settings: `80-local.conf`
 
+For your own wallpaper, use `fedcandor-theme wallpaper ~/Pictures/wallpaper.jpg` rather than an
+`output * bg` line: the shell draws the wallpaper, and sway's own wallpaper is turned off.
+
 `~/.config/sway/config.d/80-local.conf` is yours and is never touched by updates. Use it for
 anything specific to one machine or person:
 
 ```ini
-# Wallpaper
-output * bg ~/Pictures/wallpaper.jpg fill
-
 # Displays: run `swaymsg -t get_outputs` for names
 output eDP-1 scale 1.5
 output DP-1 resolution 2560x1440 position 1920,0
@@ -27,17 +27,18 @@ input "type:keyboard" {
     xkb_options ctrl:nocaps,grp:alt_shift_toggle
 }
 
-# Your own shortcuts
-bindsym $mod+Shift+t exec flatpak run org.mozilla.Thunderbird
+## My apps
+# Email
+bindsym $mod+Shift+i exec flatpak run org.mozilla.Thunderbird
 ```
 
 Apply it with <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> (reload sway). New bindings show up in the
-<kbd>Super</kbd>+<kbd>/</kbd> cheatsheet automatically. For `exec` bindings, a `#` comment line just
-above the binding becomes its description.
+<kbd>Super</kbd>+<kbd>.</kbd> keybinds overlay automatically. A `## Heading` comment starts a section of the
+overlay, and a `#` comment line just above a group of bindings becomes their description.
 
 ## Themes
 
-Five themes ship built in, and any Omarchy theme installs with one command. See [Themes](../themes/).
+Seven themes ship built in, and any Omarchy theme installs with one command. See [Themes](../themes/).
 
 ## Changing the desktop itself
 
