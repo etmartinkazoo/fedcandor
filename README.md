@@ -76,6 +76,15 @@ site/                website and docs (Astro); deployed to GitHub Pages
   is confirmed before allowing suspend, and falls back to swaylock.
 - IPC: `qs ipc show` lists everything you can bind, e.g. `qs ipc call launcher toggle`.
 
+## Checking changes
+
+`tests/check.sh` boots a headless sway in a throwaway session (its own home folder and D-Bus), applies
+every theme, loads the shell from this checkout in each desktop mode, opens every panel, and drives a
+virtual mouse through window resizing, double-click maximize and drag-to-snap. Nothing touches the
+running desktop. `--screenshots DIR` saves every panel per theme and mode for a visual review.
+`git config core.hooksPath .githooks` runs the quick version (`--quick`, a few seconds) before
+each commit that touches the desktop.
+
 ## Security notes
 
 - Bluetooth pairing is deny-by-default: only devices you pair from the Bluetooth menu are accepted,

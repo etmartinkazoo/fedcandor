@@ -14,7 +14,9 @@ Scope {
     readonly property bool active: ShellState.activePopup === "quick"
 
     // Bar icon: the settings glyph, plus any state you'd want to notice.
+    property var updates: null    // Updates.qml
     readonly property string barText: "󰒓" + (caffeine.enabled ? " 󰅶" : "") + (ShellState.settings.dnd ? " 󰂛" : "")
+        + (updates && updates.attention ? " 󰚰" : "")
 
     // ---- Brightness (brightnessctl; hidden on machines without a backlight) ----
     property int brightness: -1
@@ -72,6 +74,8 @@ Scope {
                 case Qt.Key_S: qs.openTool("screenshot"); break;
                 case Qt.Key_V: qs.openTool("clipboard"); break;
                 case Qt.Key_Slash: qs.openTool("keybinds"); break;
+                case Qt.Key_U: qs.openTool("updates"); break;
+                case Qt.Key_P: qs.openTool("displays"); break;
                 default: return;
                 }
                 event.accepted = true;
@@ -254,12 +258,14 @@ Scope {
             Row {
                 width: parent.width
                 spacing: Theme.spacingMedium
-                readonly property real w: (width - spacing * 2) / 3
+                readonly property real w: (width - spacing * 4) / 5
                 Repeater {
                     model: [
                         { icon: "󰄀", label: "Screenshot [S]", popup: "screenshot" },
                         { icon: "󰅌", label: "Clipboard [V]", popup: "clipboard" },
-                        { icon: "󰌌", label: "Keybinds [/]", popup: "keybinds" }
+                        { icon: "󰌌", label: "Keybinds [/]", popup: "keybinds" },
+                        { icon: "󰍹", label: "Displays [P]", popup: "displays" },
+                        { icon: qs.updates && qs.updates.attention ? "󰚰" : "󰏔", label: "Updates [U]", popup: "updates" }
                     ]
                     delegate: OptionTile {
                         required property var modelData

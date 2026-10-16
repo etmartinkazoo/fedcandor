@@ -37,7 +37,9 @@ ShellRoot {
     Wallpaper {}
     ThemePicker { id: themePicker }
     SystemPanel { id: systemPanel; battery: batteryTool; sysmon: sysMon }
-    QuickSettings { id: quickSettings; nightLight: nightLightTool; caffeine: caffeineTool }
+    Updates { id: updatesTool }
+    Displays { id: displaysTool }
+    QuickSettings { id: quickSettings; nightLight: nightLightTool; caffeine: caffeineTool; updates: updatesTool }
 
     Switcher { id: switcher }
     TitleButtons {}

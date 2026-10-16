@@ -10,8 +10,10 @@ itself if it ever crashes. Only one popup is open at a time, and it opens on the
 
 ## Launcher
 
-<kbd>Super</kbd>+<kbd>D</kbd>. Fuzzy search across app names, descriptions and keywords. Apps you launch
-often rise to the top. Other inputs:
+<kbd>Super</kbd>+<kbd>Space</kbd> or <kbd>Super</kbd>+<kbd>D</kbd> (the Start menu in Windows mode). One search
+for everything: apps (the ones you launch often rise to the top), open windows, settings and actions
+("bluetooth", "dark", "lock", "displays", "macos"…) and files in your home folder. Each result is
+labeled. Other inputs:
 
 - `= 1240 * 1.0825` evaluates arithmetic; <kbd>Enter</kbd> copies the result.
 - If nothing matches, <kbd>Enter</kbd> runs what you typed as a shell command.
@@ -79,6 +81,24 @@ battery health, live CPU, memory and temperature, power profiles (saver, balance
 and lock, suspend, log out, reboot and power off. Log out, reboot and power off ask for a second
 press. At 15% battery you get a warning; at 5% the machine suspends after a 60-second countdown,
 unless you plug in. <kbd>M</kbd> opens a task manager (`top`).
+
+## Updates
+
+Quick Settings → **Updates** (<kbd>U</kbd>). On the signed image, the next image downloads in the
+background; the panel shows it as ready, and you choose when to restart into it. The previous image
+stays one restart away: **Roll back** switches to it. On a regular Fedora install, the panel counts
+what dnf has, and **Update** / **Undo last** open a terminal running `sudo dnf upgrade` /
+`sudo dnf history undo last`, so you see and confirm the changes. The shell checks every 6 hours,
+notifies once when something new is ready, and shows 󰚰 on the Quick Settings pill.
+
+## Displays
+
+Quick Settings → **Displays** (<kbd>P</kbd>), or <kbd>Super</kbd>+<kbd>Ctrl</kbd>+<kbd>D</kbd>. Drag screens to
+arrange them (they snap edge to edge), and pick each screen's resolution, scale and rotation.
+**Apply** asks "Keep these settings?" and reverts after 15 seconds unless you confirm, so a mode
+your screen can't show never strands you. Keeping saves the layout for that set of screens: plug
+the same screens in again (your desk, a projector) and the layout comes back by itself.
+`fedcandor-displays` does the same from a terminal.
 
 ## Lock screen
 

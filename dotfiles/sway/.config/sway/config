@@ -97,6 +97,13 @@ input "type:touchpad" {
     bindsym $mod+Shift+v exec qs ipc call clipboard toggle
     bindsym $mod+Ctrl+v exec qs ipc call clipboard toggle
 
+    # Dictation: hold to talk, or tap to start and tap again to stop
+    bindsym $mod+Shift+d exec ~/.local/bin/fedcandor-dictate press
+    bindsym --release $mod+Shift+d exec ~/.local/bin/fedcandor-dictate release
+    # Dictation on the Copilot key (Shift+Super+F23)
+    bindsym $mod+Shift+F23 exec ~/.local/bin/fedcandor-dictate press
+    bindsym --release $mod+Shift+F23 exec ~/.local/bin/fedcandor-dictate release
+
     # Notification center
     bindsym $mod+n exec qs ipc call notifications toggle
 
@@ -124,6 +131,9 @@ input "type:touchpad" {
 
     # Network
     bindsym $mod+Ctrl+w exec qs ipc call wifi toggle
+
+    # Displays
+    bindsym $mod+Ctrl+d exec qs ipc call displays toggle
 
     # Night light on/off
     bindsym $mod+Ctrl+n exec qs ipc call nightlight togglePower

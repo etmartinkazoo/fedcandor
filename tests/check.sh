@@ -156,7 +156,7 @@ shot() { [ -n "$SHOTS" ] && grim "$SHOTS/$1.png" 2>/dev/null; true; }
 # target:open function:close function, per panel
 PANELS="launcher:open:hide keybinds:open:hide theme:picker:picker quick:open:hide
 notifications:open:hide system:open:hide audio:open:hide wifi:open:hide bluetooth:open:hide
-overview:open:hide switcher:apps:hide start:open:hide"
+overview:open:hide switcher:apps:hide start:open:hide updates:open:hide displays:open:hide"
 
 for theme in $THEMES; do
     fedcandor-theme set "$theme" >/dev/null 2>&1 || fail "theme $theme"
@@ -280,6 +280,39 @@ walk(json.load(sys.stdin))'
     fi
 
     mode_to tiling || true
+fi
+
+# ------------------------------------------------------------ search ----
+if [ $QUICK = 0 ]; then
+    for q in "blue" "check" "dark"; do
+        ipc launcher search "$q"
+        sleep 0.8
+        shot "search-$q"
+        ipc launcher hide
+        sleep 0.3
+    done
+fi
+
+# ------------------------------------------------- display profiles ----
+if [ $QUICK = 0 ]; then
+    pos() { swaymsg -r -t get_outputs | python3 -I -c 'import json,sys; o=[x for x in json.load(sys.stdin) if x["name"]==sys.argv[1]]; print(o[0]["rect"]["x"], o[0]["rect"]["y"]) if o else print("none")' "$1"; }
+    swaymsg -q create_output; sleep 0.5
+    second=$(swaymsg -r -t get_outputs | python3 -I -c 'import json,sys; print([o["name"] for o in json.load(sys.stdin) if o["name"] != "HEADLESS-1"][0])')
+    fedcandor-displays apply "[{\"name\": \"HEADLESS-1\", \"enabled\": true, \"mode\": \"\", \"scale\": 1, \"transform\": \"normal\", \"x\": 0, \"y\": 0},
+        {\"name\": \"$second\", \"enabled\": true, \"mode\": \"\", \"scale\": 1, \"transform\": \"normal\", \"x\": 1280, \"y\": 0}]"
+    sleep 0.3
+    [ "$(pos "$second")" = "1280 0" ] && pass "displays: apply arranges screens" || fail "displays: $second at $(pos "$second"), expected 1280 0"
+    fedcandor-displays save
+    swaymsg -q output "$second" position 0 800; sleep 0.3
+    fedcandor-displays restore; sleep 0.3
+    [ "$(pos "$second")" = "1280 0" ] && pass "displays: profile restores the saved layout" || fail "displays: restore left $second at $(pos "$second")"
+    if fedcandor-displays apply '[{"name": "HEADLESS-1", "enabled": false}]' 2>/dev/null; then
+        fail "displays: allowed turning every screen off"
+    else
+        pass "displays: refuses to turn every screen off"
+    fi
+    shot "displays-two-screens"
+    swaymsg -q output "$second" unplug; sleep 0.3
 fi
 
 # Anything the shell complained about (minus noise from the environment)

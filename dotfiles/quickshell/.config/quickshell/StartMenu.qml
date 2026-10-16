@@ -35,8 +35,12 @@ Scope {
         .slice(0, columns)
 
     readonly property string mode: query.trim() !== "" ? "search" : view
-    readonly property var results: mode === "search" ? launcher.search(query)
-        : (mode === "all" ? allApps : pinned.concat(recommended))
+    // Search finds apps, open windows, settings and files (Launcher.searchAll);
+    // All apps lists every app; Home is the pinned + most used grid.
+    readonly property var results: mode === "search" ? launcher.searchAll(query)
+        : (mode === "all" ? allApps.map(a => launcher.appItem(a)) : pinned.concat(recommended))
+
+    onQueryChanged: launcher.requestFiles(query)
 
     onActiveChanged: {
         if (active) {
@@ -56,9 +60,12 @@ Scope {
         ShellState.settings.startPinned = p;
     }
 
-    function launch(app) {
+    // An app (home grid) or a search result (list)
+    function launch(entry) {
         ShellState.closePopup("start");
-        if (app) launcher.launchApp(app);
+        if (!entry) return;
+        if (entry.kind) launcher.runItem(entry);
+        else launcher.launchApp(entry);
     }
 
     // Grid on the home view, a list otherwise
@@ -140,7 +147,7 @@ Scope {
                 id: field
                 width: parent.width
                 focus: true
-                placeholderText: "Search apps..."
+                placeholderText: "Search apps, windows, settings, files..."
                 onTextChanged: {
                     start.query = text;
                     start.index = 0;
@@ -272,10 +279,10 @@ Scope {
                         width: list.width
 
                         // A–Z heading in All apps, above the first app of each letter
-                        readonly property string letter: modelData.name.charAt(0).toUpperCase()
+                        readonly property string letter: modelData.title.charAt(0).toUpperCase()
                         Caption {
                             visible: start.mode === "all"
-                                && (entry.index === 0 || start.results[entry.index - 1].name.charAt(0).toUpperCase() !== entry.letter)
+                                && (entry.index === 0 || start.results[entry.index - 1].title.charAt(0).toUpperCase() !== entry.letter)
                             text: entry.letter
                             color: Theme.accent
                             font.bold: true
@@ -297,20 +304,36 @@ Scope {
                                 spacing: Theme.spacingMedium
 
                                 IconImage {
+                                    visible: !row.modelData.glyph
                                     implicitSize: 24
-                                    source: Quickshell.iconPath(row.modelData.icon, "application-x-executable")
+                                    source: row.modelData.iconSource ?? ""
                                     asynchronous: true
                                 }
                                 Text {
-                                    text: row.modelData.name
+                                    visible: !!row.modelData.glyph
+                                    Layout.preferredWidth: 24
+                                    horizontalAlignment: Text.AlignHCenter
+                                    text: row.modelData.glyph ?? ""
+                                    color: Theme.accent
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontIcon
+                                }
+                                Text {
+                                    text: row.modelData.title
                                     color: Theme.textPrimary
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontNormal
                                     elide: Text.ElideRight
                                     Layout.fillWidth: true
                                 }
+                                Caption {
+                                    visible: start.mode === "search" && row.modelData.kind !== "app"
+                                    text: row.modelData.subtitle ?? ""
+                                    elide: Text.ElideMiddle
+                                    Layout.maximumWidth: 220
+                                }
                                 Text {
-                                    text: ShellState.settings.startPinned.includes(row.modelData.id) ? "󰐃" : ""
+                                    text: row.modelData.kind === "app" && ShellState.settings.startPinned.includes(row.modelData.app.id) ? "󰐃" : ""
                                     color: Theme.textMuted
                                     font.family: Theme.fontFamily
                                     font.pixelSize: Theme.fontCaption
@@ -320,7 +343,7 @@ Scope {
                             MouseArea {
                                 anchors.fill: parent
                                 acceptedButtons: Qt.RightButton
-                                onClicked: start.togglePin(row.modelData)
+                                onClicked: if (row.modelData.kind === "app") start.togglePin(row.modelData.app)
                             }
                         }
                     }

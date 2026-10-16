@@ -1,0 +1,181 @@
+#!/usr/bin/python3 -I
+"""fedcandor-displays: display arrangement and per-setup profiles.
+
+    fedcandor-displays list              outputs as JSON (for the Displays panel)
+    fedcandor-displays apply JSON        set outputs: [{name, enabled, mode, scale, transform, x, y}]
+    fedcandor-displays save              remember the current arrangement for these screens
+    fedcandor-displays restore           re-apply the arrangement saved for the screens
+                                         connected now (the shell runs this on hotplug)
+    fedcandor-displays forget            drop the profile for the screens connected now
+
+A profile is keyed by which screens are connected (make, model, serial), so
+docking at your desk brings back your desk layout, and undocking brings back
+the laptop's. Profiles live in ~/.config/fedcandor/displays.json.
+"""
+
+import json
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+CONFIG = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "fedcandor"
+PROFILES = CONFIG / "displays.json"
+NAME = re.compile(r"^[A-Za-z0-9_.-]+$")
+MODE = re.compile(r"^\d{2,5}x\d{2,5}(@\d+(\.\d+)?Hz)?$")
+TRANSFORMS = {"normal", "90", "180", "270", "flipped", "flipped-90", "flipped-180", "flipped-270"}
+
+
+def swaymsg(*args):
+    p = subprocess.run(["swaymsg", *args], capture_output=True, text=True)
+    return p.returncode, p.stdout
+
+
+def outputs():
+    code, out = swaymsg("-r", "-t", "get_outputs")
+    return json.loads(out) if code == 0 else []
+
+
+def ident(o):
+    return " ".join(str(o.get(k) or "?") for k in ("make", "model", "serial"))
+
+
+def key(outs):
+    return " | ".join(sorted(ident(o) for o in outs))
+
+
+def mode_str(m):
+    return f"{m['width']}x{m['height']}@{m['refresh'] / 1000:.3f}Hz"
+
+
+def listing():
+    out = []
+    for o in outputs():
+        cur = o.get("current_mode") or {}
+        modes, seen = [], set()
+        for m in sorted(o.get("modes", []), key=lambda m: (-m["width"] * m["height"], -m["refresh"])):
+            s = mode_str(m)
+            if s not in seen:
+                seen.add(s)
+                modes.append({"mode": s, "width": m["width"], "height": m["height"], "refresh": round(m["refresh"] / 1000, 2)})
+        out.append({
+            "name": o["name"],
+            "id": ident(o),
+            "description": f"{o.get('make', '')} {o.get('model', '')}".strip(),
+            "enabled": o.get("active", False),
+            "focused": o.get("focused", False),
+            "mode": mode_str(cur) if cur else "",
+            "width": cur.get("width", 0),
+            "height": cur.get("height", 0),
+            "scale": o.get("scale", 1.0) if o.get("active") else 1.0,
+            "transform": o.get("transform", "normal"),
+            "x": o.get("rect", {}).get("x", 0),
+            "y": o.get("rect", {}).get("y", 0),
+            "modes": modes,
+        })
+    return out
+
+
+def commands(entries):
+    """sway commands for a list of output settings; refuses anything unexpected."""
+    cmds = []
+    for e in entries:
+        name = str(e["name"])
+        if not NAME.match(name):
+            raise ValueError(f"bad output name {name!r}")
+        if not e.get("enabled", True):
+            cmds.append(f"output {name} disable")
+            continue
+        parts = [f"output {name} enable"]
+        if e.get("mode"):
+            if not MODE.match(e["mode"]):
+                raise ValueError(f"bad mode {e['mode']!r}")
+            parts.append(f"mode {e['mode']}")
+        scale = float(e.get("scale", 1))
+        if not 0.5 <= scale <= 4:
+            raise ValueError(f"bad scale {scale}")
+        parts.append(f"scale {scale:g}")
+        t = str(e.get("transform", "normal"))
+        if t not in TRANSFORMS:
+            raise ValueError(f"bad transform {t!r}")
+        parts.append(f"transform {t}")
+        parts.append(f"position {int(e.get('x', 0))} {int(e.get('y', 0))}")
+        cmds.append(" ".join(parts))
+    # Never turn every screen off
+    if entries and all(not e.get("enabled", True) for e in entries):
+        raise ValueError("at least one screen must stay on")
+    return cmds
+
+
+def apply(entries):
+    for c in commands(entries):
+        code, out = swaymsg(c)
+        if code != 0:
+            print(out, file=sys.stderr)
+            return code
+    return 0
+
+
+def load_profiles():
+    try:
+        return json.loads(PROFILES.read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def save_profiles(p):
+    CONFIG.mkdir(parents=True, exist_ok=True)
+    tmp = PROFILES.with_suffix(".tmp")
+    tmp.write_text(json.dumps(p, indent=2) + "\n")
+    tmp.replace(PROFILES)
+
+
+def main():
+    args = sys.argv[1:]
+    cmd = args[0] if args else "list"
+    if cmd == "list":
+        print(json.dumps(listing()))
+    elif cmd == "apply":
+        try:
+            sys.exit(apply(json.loads(args[1])))
+        except (IndexError, ValueError, KeyError) as e:
+            sys.exit(f"fedcandor-displays: {e}")
+    elif cmd == "save":
+        outs = outputs()
+        profiles = load_profiles()
+        profiles[key(outs)] = [
+            {"id": ident(o), "enabled": o.get("active", False), "mode": mode_str(o["current_mode"]) if o.get("current_mode") else "",
+             "scale": o.get("scale", 1.0), "transform": o.get("transform", "normal"),
+             "x": o.get("rect", {}).get("x", 0), "y": o.get("rect", {}).get("y", 0)}
+            for o in outs]
+        save_profiles(profiles)
+    elif cmd == "restore":
+        outs = outputs()
+        saved = load_profiles().get(key(outs))
+        if not saved:
+            return
+        by_id = {ident(o): o["name"] for o in outs}
+        entries = [dict(s, name=by_id[s["id"]]) for s in saved if s["id"] in by_id]
+        current = {o["name"]: o for o in outs}
+        # Skip when nothing would change (restore runs on every output event)
+        def same(e):
+            o = current[e["name"]]
+            return (o.get("active") == e["enabled"] and (not e["enabled"] or (
+                o.get("rect", {}).get("x") == e["x"] and o.get("rect", {}).get("y") == e["y"]
+                and abs(o.get("scale", 1) - e["scale"]) < 0.01 and o.get("transform") == e["transform"]
+                and (not e["mode"] or (o.get("current_mode") and mode_str(o["current_mode"]) == e["mode"])))))
+        if not all(same(e) for e in entries):
+            sys.exit(apply(entries))
+    elif cmd == "forget":
+        profiles = load_profiles()
+        profiles.pop(key(outputs()), None)
+        save_profiles(profiles)
+    elif cmd in ("-h", "--help"):
+        print(__doc__.strip())
+    else:
+        sys.exit(f"fedcandor-displays: unknown command {cmd} (see --help)")
+
+
+if __name__ == "__main__":
+    main()
