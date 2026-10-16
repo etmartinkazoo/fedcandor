@@ -28,6 +28,7 @@ Coming from [Omarchy](https://omarchy.org)? Most of its shortcuts work here too:
 | <kbd>Alt</kbd>+<kbd>Tab</kbd> | Switch between the current app's windows (hold <kbd>Alt</kbd>, tap <kbd>Tab</kbd>, release) |
 | <kbd>Super</kbd>+<kbd>Ctrl</kbd>+<kbd>←</kbd>/<kbd>→</kbd> | Previous / next workspace |
 | <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> | Clipboard history |
+| <kbd>Super</kbd>+<kbd>A</kbd> | Chat: a side conversation for ideas (select text anywhere to bring it in) |
 | <kbd>Print</kbd> or <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> | Screenshot and screen recording |
 | <kbd>Super</kbd>+<kbd>N</kbd> | Notification center |
 | <kbd>Super</kbd>+<kbd>Escape</kbd> or <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>E</kbd> | System panel: battery, power profiles, lock, suspend, log out, reboot, power off |

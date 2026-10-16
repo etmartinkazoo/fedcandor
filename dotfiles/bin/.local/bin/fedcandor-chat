@@ -1,0 +1,233 @@
+#!/usr/bin/python3 -I
+"""fedcandor-chat: the side chat's bridge to opencode (Super+A).
+
+The shell starts this and talks to it in JSON lines:
+
+    stdin   {"cmd": "send", "text": "..."}   ask something
+            {"cmd": "stop"}                  stop the current answer
+            {"cmd": "new"}                   start a new conversation
+    stdout  {"type": "history", "messages": [{"role", "text", "time"}], "model": "..."}
+            {"type": "delta", "text": "..."}  part of the answer, as it streams
+            {"type": "done"} | {"type": "error", "message": "..."}
+
+It uses the opencode service that's already running (opencode serve
+--service), one persistent session, and the free DeepSeek model. The chat is
+for conversation only: the session asks permission for every tool, and this
+bridge rejects every request, so the model never runs commands or reads files.
+The free tier requires opencode's stock prompt and tool list, so tools can't
+simply be removed; rejecting them is what keeps it to talking.
+
+State: ~/.local/state/fedcandor/chat.json (session id and the transcript shown).
+"""
+
+import base64
+import json
+import os
+import sys
+import threading
+import time
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+HOME = Path.home()
+STATE = Path(os.environ.get("XDG_STATE_HOME") or HOME / ".local/state") / "fedcandor"
+STATE_FILE = STATE / "chat.json"
+CHAT_DIR = Path(os.environ.get("XDG_DATA_HOME") or HOME / ".local/share") / "fedcandor/chat"
+MODEL = {"providerID": "opencode", "id": os.environ.get("FEDCANDOR_CHAT_MODEL", "deepseek-v4.1-flash-free")}
+NO_TOOLS = "Tools are off in this chat: answer from the conversation, or ask the user to paste what you need."
+
+out_lock = threading.Lock()
+
+
+def emit(obj):
+    with out_lock:
+        sys.stdout.write(json.dumps(obj) + "\n")
+        sys.stdout.flush()
+
+
+def load_state():
+    try:
+        return json.loads(STATE_FILE.read_text())
+    except (OSError, ValueError):
+        return {"session": None, "messages": []}
+
+
+def save_state(st):
+    STATE.mkdir(parents=True, exist_ok=True)
+    tmp = STATE_FILE.with_suffix(".tmp")
+    tmp.write_text(json.dumps(st))
+    os.chmod(tmp, 0o600)
+    tmp.replace(STATE_FILE)
+
+
+class Service:
+    """The local opencode service (URL and password from its own files)."""
+
+    def __init__(self):
+        svc = json.loads((HOME / ".local/state/opencode/service.json").read_text())
+        pw = json.loads((HOME / ".config/opencode/service.json").read_text())["password"]
+        self.url = svc["url"]
+        self.auth = "Basic " + base64.b64encode(f"opencode:{pw}".encode()).decode()
+
+    def request(self, method, path, body=None, timeout=30):
+        r = urllib.request.Request(self.url + path, method=method,
+                                   data=json.dumps(body).encode() if body is not None else None,
+                                   headers={"Authorization": self.auth, "Content-Type": "application/json"})
+        with urllib.request.urlopen(r, timeout=timeout) as f:
+            text = f.read().decode()
+            return json.loads(text) if text else None
+
+    def events(self):
+        r = urllib.request.Request(self.url + "/api/event",
+                                   headers={"Authorization": self.auth, "Accept": "text/event-stream"})
+        return urllib.request.urlopen(r, timeout=3600)
+
+
+class Chat:
+    def __init__(self):
+        self.state = load_state()
+        self.service = None
+        self.answer = ""          # the reply being streamed
+        self.busy = False
+        self.listener = None
+
+    def connect(self):
+        try:
+            self.service = Service()
+            return True
+        except (OSError, ValueError, KeyError):
+            emit({"type": "error", "message": "opencode isn't running (start it with: opencode serve --service)"})
+            return False
+
+    def ensure_session(self):
+        sid = self.state.get("session")
+        if sid:
+            try:
+                self.service.request("GET", f"/api/session/{sid}")
+                return sid
+            except urllib.error.HTTPError:
+                pass   # deleted: start a new one, keep the transcript we show
+        CHAT_DIR.mkdir(parents=True, exist_ok=True)
+        conf = CHAT_DIR / "opencode.json"
+        if not conf.exists():
+            conf.write_text('{\n  "$schema": "https://opencode.ai/config.json",\n  "permission": { "*": "ask" }\n}\n')
+        s = self.service.request("POST", "/api/session", {
+            "title": "fedcandor chat",
+            "location": {"directory": str(CHAT_DIR)},
+            "model": MODEL,
+            "permissions": [{"action": "*", "resource": "*", "effect": "ask"}],
+        })
+        sid = (s.get("data") or s)["id"]
+        self.state["session"] = sid
+        save_state(self.state)
+        return sid
+
+    def listen(self):
+        """One event stream for the bridge's lifetime: text deltas, completion,
+        and permission requests (always rejected)."""
+        while True:
+            try:
+                with self.service.events() as f:
+                    for raw in f:
+                        line = raw.decode(errors="replace").rstrip("\n")
+                        if line.startswith("data:"):
+                            try:
+                                self.on_event(json.loads(line[5:]))
+                            except ValueError:
+                                pass
+            except (OSError, urllib.error.URLError):
+                time.sleep(2)
+
+    def on_event(self, ev):
+        data = ev.get("data") or {}
+        if data.get("sessionID") != self.state.get("session"):
+            return
+        t = ev.get("type", "")
+        if t == "permission.asked":
+            try:
+                self.service.request("POST", f"/api/session/{data['sessionID']}/permission/{data['id']}/reply",
+                                     {"decision": "reject", "message": NO_TOOLS})
+            except (OSError, urllib.error.URLError, KeyError):
+                pass
+        elif t == "session.text.delta" and self.busy:
+            delta = data.get("delta") or data.get("text") or ""
+            if delta:
+                self.answer += delta
+                emit({"type": "delta", "text": delta})
+        elif t in ("session.execution.succeeded", "session.execution.failed", "session.execution.interrupted") and self.busy:
+            self.finish(None if t == "session.execution.succeeded" else "The answer didn't finish.")
+        elif t == "session.error" and self.busy:
+            self.finish(str((data.get("error") or {}).get("message") or "Something went wrong."))
+
+    def finish(self, error):
+        self.busy = False
+        if self.answer.strip():
+            self.state["messages"].append({"role": "assistant", "text": self.answer, "time": int(time.time())})
+            save_state(self.state)
+        self.answer = ""
+        emit({"type": "error", "message": error} if error else {"type": "done"})
+
+    def send(self, text):
+        if self.busy or not text.strip():
+            return
+        if not self.service and not self.connect():
+            return
+        try:
+            sid = self.ensure_session()
+        except (OSError, urllib.error.URLError, KeyError, ValueError) as e:
+            emit({"type": "error", "message": f"Couldn't reach opencode: {e}"})
+            return
+        if self.listener is None:
+            self.listener = threading.Thread(target=self.listen, daemon=True)
+            self.listener.start()
+            time.sleep(0.3)
+        self.state["messages"].append({"role": "user", "text": text, "time": int(time.time())})
+        save_state(self.state)
+        self.busy = True
+        self.answer = ""
+        try:
+            self.service.request("POST", f"/api/session/{sid}/prompt", {"text": text})
+        except (OSError, urllib.error.URLError) as e:
+            self.busy = False
+            emit({"type": "error", "message": f"Couldn't send: {e}"})
+
+    def stop(self):
+        sid = self.state.get("session")
+        if self.busy and sid and self.service:
+            try:
+                self.service.request("POST", f"/api/session/{sid}/interrupt", {})
+            except (OSError, urllib.error.URLError):
+                self.finish("Stopped.")
+
+    def new(self):
+        self.stop()
+        self.state = {"session": None, "messages": []}
+        save_state(self.state)
+        self.history()
+
+    def history(self):
+        emit({"type": "history", "messages": self.state.get("messages", []), "model": MODEL["id"]})
+
+
+def main():
+    chat = Chat()
+    chat.history()
+    for line in sys.stdin:
+        try:
+            msg = json.loads(line)
+        except ValueError:
+            continue
+        cmd = msg.get("cmd")
+        if cmd == "send":
+            threading.Thread(target=chat.send, args=(str(msg.get("text", ""))[:20000],), daemon=True).start()
+        elif cmd == "stop":
+            chat.stop()
+        elif cmd == "new":
+            chat.new()
+        elif cmd == "history":
+            chat.history()
+
+
+if __name__ == "__main__":
+    main()

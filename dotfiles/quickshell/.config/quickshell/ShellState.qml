@@ -92,6 +92,8 @@ Singleton {
             // Apps pinned to the Start menu (missing ones are skipped)
             property var startPinned: ["kitty", "org.mozilla.firefox", "chromium-browser", "thunar", "nvim", "mpv",
                 "org.pulseaudio.pavucontrol", "blueman-manager", "system-config-printer"]
+            // Side chat: offer "Ask in chat" when text is selected anywhere
+            property bool chatSelectionChip: true
             // { "<app name>": { count: n, last: epochMs } }
             property var launchStats: ({})
         }

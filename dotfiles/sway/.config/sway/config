@@ -88,6 +88,12 @@ input "type:touchpad" {
     bindsym $mod+space exec $menu
     bindsym $mod+d exec $menu
 
+    # Chat: a side conversation for ideas (opencode, free DeepSeek)
+    bindsym $mod+a exec qs ipc call chat toggle
+
+    # Ask the chat about the selected text
+    bindsym $mod+Shift+a exec qs ipc call chat askSelection
+
 ## Shell
     # Keybinds overlay
     bindsym $mod+period exec qs ipc call keybinds toggle
@@ -168,7 +174,7 @@ input "type:touchpad" {
     bindsym $mod+o floating toggle, sticky toggle
 
     # Focus the parent container
-    bindsym $mod+a focus parent
+    bindsym $mod+Alt+a focus parent
 
     # Snap floating window: halves, then quarters; up maximizes
     bindsym $mod+Alt+Left exec qs ipc call window snap left
@@ -264,7 +270,7 @@ input "type:touchpad" {
     bindsym $mod+e layout toggle split
 
     # Focus tiling / floating windows
-    bindsym $mod+Shift+a focus mode_toggle
+    bindsym $mod+Alt+space focus mode_toggle
 
     # Resize mode
     bindsym $mod+r mode "resize"

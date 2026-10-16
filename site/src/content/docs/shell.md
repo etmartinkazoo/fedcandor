@@ -20,6 +20,19 @@ labeled. Other inputs:
 
 Launched apps run in their own systemd scope, so restarting the shell never closes your work.
 
+## Chat
+
+<kbd>Super</kbd>+<kbd>A</kbd> opens a chat on the left: a running conversation for thinking out loud about
+ideas, plans and writing. It keeps going between sessions; **NEW** starts over. Replies stream in and
+render Markdown. Select text in any app and an **Ask in chat** chip appears at the left edge for a few
+seconds (turn it off with the chip toggle in the chat header); <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>
+sends the selection directly.
+
+Under the hood it's [opencode](https://opencode.ai) with the free DeepSeek model, through the opencode
+service. The chat is conversation only: every tool the model asks for (running commands, reading
+files) is refused, so it never touches your machine. Selections stay in memory and reach the chat
+only when you click.
+
 ## Clipboard history
 
 <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>. The last 200 copies (text and images, with image previews),

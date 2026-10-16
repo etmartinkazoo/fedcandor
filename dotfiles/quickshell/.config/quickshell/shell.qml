@@ -39,6 +39,7 @@ ShellRoot {
     SystemPanel { id: systemPanel; battery: batteryTool; sysmon: sysMon }
     Updates { id: updatesTool }
     Displays { id: displaysTool }
+    Chat { id: chatTool }
     QuickSettings { id: quickSettings; nightLight: nightLightTool; caffeine: caffeineTool; updates: updatesTool }
 
     Switcher { id: switcher }

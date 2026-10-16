@@ -156,7 +156,7 @@ shot() { [ -n "$SHOTS" ] && grim "$SHOTS/$1.png" 2>/dev/null; true; }
 # target:open function:close function, per panel
 PANELS="launcher:open:hide keybinds:open:hide theme:picker:picker quick:open:hide
 notifications:open:hide system:open:hide audio:open:hide wifi:open:hide bluetooth:open:hide
-overview:open:hide switcher:apps:hide start:open:hide updates:open:hide displays:open:hide"
+overview:open:hide switcher:apps:hide start:open:hide updates:open:hide displays:open:hide chat:open:hide"
 
 for theme in $THEMES; do
     fedcandor-theme set "$theme" >/dev/null 2>&1 || fail "theme $theme"
@@ -291,6 +291,20 @@ if [ $QUICK = 0 ]; then
         ipc launcher hide
         sleep 0.3
     done
+fi
+
+# ------------------------------------------- chat: selection chip ----
+if [ $QUICK = 0 ] && command -v wl-copy >/dev/null; then
+    wl-copy --primary "Selected text: café ünïcode, with a second line" &
+    wlcopy=$!
+    sleep 1.4
+    shot "chat-chip"
+    mouse move 60 400 sleep 0.2 click
+    sleep 0.8
+    shot "chat-from-selection"
+    ipc chat hide
+    kill "$wlcopy" 2>/dev/null || true
+    sleep 0.3
 fi
 
 # ------------------------------------------------- display profiles ----
