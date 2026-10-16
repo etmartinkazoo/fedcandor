@@ -81,6 +81,9 @@ Singleton {
     // Geometry & Spacing
     readonly property int radius: 0
     readonly property int borderWidth: 1
+    // An open panel is the active surface: it wears the accent border the
+    // focused window gives up while it is open (PanelFocus.qml), at the same 2px
+    readonly property int panelBorderWidth: 2
     readonly property int paddingSmall: 6
     readonly property int paddingMedium: 8
     readonly property int paddingLarge: 12

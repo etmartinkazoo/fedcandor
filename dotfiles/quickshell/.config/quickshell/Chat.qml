@@ -365,8 +365,9 @@ Scope {
             height: parent.height
             x: -panel.slide * (parent.width + Desktop.edgeGap)
             color: Theme.bgPanel
-            border.color: Theme.border
-            border.width: Theme.borderWidth
+            // The active surface: accent, like a focused window (PanelFocus.qml)
+            border.color: Theme.accent
+            border.width: Theme.panelBorderWidth
             radius: Theme.radius
 
             FocusScope {

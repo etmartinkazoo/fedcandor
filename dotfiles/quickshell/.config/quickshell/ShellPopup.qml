@@ -64,8 +64,9 @@ PanelWindow {
             y: popup.centered ? 0 : (1 - popup.progress) * 10 * (Desktop.barOnTop ? -1 : 1)
         }
         color: Theme.bgPanel
-        border.color: Theme.border
-        border.width: Theme.borderWidth
+        // The active surface: accent, like a focused window (PanelFocus.qml)
+        border.color: Theme.accent
+        border.width: Theme.panelBorderWidth
         radius: Theme.radius
 
         MouseArea {

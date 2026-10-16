@@ -40,6 +40,7 @@ ShellRoot {
     Updates { id: updatesTool }
     Displays { id: displaysTool }
     Chat { id: chatTool }
+    PanelFocus {}
     QuickSettings { id: quickSettings; nightLight: nightLightTool; caffeine: caffeineTool; updates: updatesTool }
 
     Switcher { id: switcher }
