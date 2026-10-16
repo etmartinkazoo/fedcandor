@@ -100,4 +100,12 @@ Singleton {
     function nextBackground() {
         Quickshell.execDetached([cli, "bg-next"]);
     }
+
+    function previousBackground() {
+        Quickshell.execDetached([cli, "bg-prev"]);
+    }
+
+    function setBackground(index) {
+        Quickshell.execDetached([cli, "bg-set", String(index)]);
+    }
 }

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # [user] Tela icon theme from its GitHub release (pinned + verified).
 # One color set (Tela, Tela-dark, Tela-light): fedcandor-theme picks the dark or
-# light variant to match the theme. A theme may name another icon theme in
-# its icons.theme; it's used when installed.
+# light variant to match the theme. fedcandor uses Tela everywhere; the shell
+# pins it too (shell.qml).
 set -euo pipefail
 source "$(dirname "$0")/../lib/common.sh"
 

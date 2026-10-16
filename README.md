@@ -27,6 +27,7 @@ cd ~/fedcandor
 |-------------------|---------|--------------|
 | `system-packages` | sudo    | `dnf install` everything in `packages/fedora.txt` |
 | `system-security` | sudo    | automatic security updates, closes unused ssh in the firewall, reports SELinux/Secure Boot/LUKS status |
+| `firefox`         | sudo    | installs the fedcandor Theme extension system-wide (the one place Fedora's Firefox runs an unsigned add-on), so Firefox follows theme switches live |
 | `fonts`           | user    | 0xProto Nerd Font from its GitHub release (pinned version, SHA-256 verified) |
 | `icons`           | user    | Tela icon theme from its GitHub release (pinned version, SHA-256 verified) |
 | `dotfiles`        | user    | links `dotfiles/*` into `$HOME` with GNU stow (`--no-folding`); anything in the way goes to `~/.local/state/fedcandor/backup-*` |
@@ -45,6 +46,7 @@ lib/common.sh        shared helpers (logging, verified downloads)
 steps/NN-*.sh        install steps, run in order
 themes/              built-in themes (Omarchy-compatible colors.toml + wallpapers)
 templates/           theme templates: rendered for Quickshell, sway, foot, GTK, Firefox
+firefox/             Firefox theme extension + its native messaging host (live theme switching)
 packages/fedora.txt  dnf package list (also used by the Atomic image)
 dotfiles/<pkg>/      stow packages: sway, quickshell, foot, swappy, autostart, systemd, bin
 atomic/              bootc image: Containerfile, build script, first-login setup
@@ -55,13 +57,15 @@ site/                website and docs (Astro); deployed to GitHub Pages
 
 - **Per-machine sway settings** (wallpaper, keyboard options, output scaling) go in
   `~/.config/sway/config.d/80-local.conf`. It isn't tracked; `install.sh` creates a template.
-- **Themes**: five built in (`themes/`), plus any [Omarchy](https://github.com/omacom/omarchy)
+- **Themes**: seven built in (`themes/`), plus any [Omarchy](https://github.com/omacom/omarchy)
   theme via `fedcandor-theme install omarchy:<name>`. Switch with <kbd>Super</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd>
   or `fedcandor-theme set <name>`. See [themes/README.md](themes/README.md).
 - **Generated files** aren't tracked: `sway/config.d/99-theme.conf`, `foot/theme.ini`,
-  `gtk-*/settings.ini`, `kitty/theme.conf`, `nvim/colors/fedcandor.lua` and
-  `quickshell/firefox-theme/theme.json` are rendered from `templates/` by `fedcandor-theme` on
-  every theme change, and applied live (kitty and Neovim included).
+  `gtk-*/settings.ini`, `kitty/theme.conf`, `nvim/colors/fedcandor.lua` and Firefox's
+  `chrome/userChrome.css` are rendered from `templates/` by `fedcandor-theme` on every theme
+  change, and applied live (kitty and Neovim included). Firefox's colors come from
+  `~/.local/state/fedcandor/theme/rendered/firefox-theme.json`, streamed to the fedcandor Theme
+  extension, and tern follows `rendered/colors.toml` there.
 - **Everything else** is a symlink into this repo: edit it here, then commit.
 
 ## Operating

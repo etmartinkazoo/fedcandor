@@ -23,6 +23,9 @@ FEDCANDOR_FONT_DIR=/usr/share/fonts/0xProto bash "$ROOT/steps/30-fonts.sh"
 FEDCANDOR_ICON_DIR=/usr/share/icons bash "$ROOT/steps/40-icons.sh"
 fc-cache -f >/dev/null
 
+info "Firefox theme extension"
+FEDCANDOR_FIREFOX_PREFIX=/usr bash "$ROOT/steps/25-firefox.sh"
+
 info "User units"
 install -Dm644 "$ROOT/dotfiles/systemd/.config/systemd/user/quickshell.service" \
     /usr/lib/systemd/user/quickshell.service

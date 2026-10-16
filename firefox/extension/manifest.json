@@ -1,0 +1,24 @@
+{
+  "manifest_version": 2,
+  "name": "fedcandor Theme",
+  "version": "2.0.0",
+  "description": "Keeps Firefox in the current fedcandor theme, and follows theme switches live.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "theme@fedcandor",
+      "strict_min_version": "128.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  },
+  "permissions": ["theme", "nativeMessaging"],
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": true
+  },
+  "icons": {
+    "48": "icon.svg",
+    "96": "icon.svg"
+  }
+}

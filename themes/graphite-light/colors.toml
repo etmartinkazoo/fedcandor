@@ -1,0 +1,32 @@
+# graphite-light: graphite for bright rooms. Soft off-white with neutral grey accents.
+mode = "light"
+
+accent = "#555555"
+selection = "#d6d6d6"
+muted = "#a8a8a8"
+
+background = "#f5f5f5"
+dark_background = "#ebebeb"
+darker_background = "#e0e0e0"
+lighter_background = "#e6e6e6"
+
+foreground = "#262626"
+dark_foreground = "#7a7a7a"
+light_foreground = "#3d3d3d"
+bright_foreground = "#111111"
+
+red = "#c4434d"
+yellow = "#a77b14"
+orange = "#b5651d"
+green = "#4f8a2f"
+cyan = "#2b8a96"
+blue = "#3f6fb0"
+magenta = "#9a4cb5"
+brown = "#7a5a3c"
+
+bright_red = "#d8565f"
+bright_yellow = "#be901f"
+bright_green = "#62a03f"
+bright_cyan = "#3a9fab"
+bright_blue = "#5585c8"
+bright_magenta = "#b062cc"

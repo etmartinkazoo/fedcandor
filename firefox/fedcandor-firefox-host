@@ -1,0 +1,67 @@
+#!/usr/bin/python3 -I
+"""Native messaging host for the fedcandor Theme Firefox extension.
+
+Firefox starts this when the extension connects. It sends the current theme's
+rendered firefox-theme.json, then watches the file and sends it again whenever
+fedcandor-theme replaces it. It exits when Firefox closes its stdin.
+
+Only that one file is ever read, and nothing sent by the browser is acted on.
+"""
+
+import json
+import os
+import struct
+import sys
+import threading
+import time
+from pathlib import Path
+
+STATE = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state")
+THEME = STATE / "fedcandor/theme/rendered/firefox-theme.json"
+MAX_MESSAGE = 1024 * 1024  # Firefox's limit for host -> extension messages
+
+
+def send(obj):
+    data = json.dumps(obj).encode()
+    if len(data) > MAX_MESSAGE:
+        return
+    sys.stdout.buffer.write(struct.pack("<I", len(data)) + data)
+    sys.stdout.buffer.flush()
+
+
+def stamp():
+    try:
+        st = THEME.stat()
+        return (st.st_ino, st.st_mtime_ns, st.st_size)
+    except OSError:
+        return None
+
+
+def drain_stdin():
+    """Firefox closing stdin means the extension (or Firefox) went away."""
+    while sys.stdin.buffer.read(65536):
+        pass
+    os._exit(0)
+
+
+def main():
+    threading.Thread(target=drain_stdin, daemon=True).start()
+    last = None
+    while True:
+        now = stamp()
+        if now is not None and now != last:
+            try:
+                theme = json.loads(THEME.read_text())
+            except (OSError, ValueError):
+                theme = None  # mid-write or malformed; try again next tick
+            if isinstance(theme, dict) and isinstance(theme.get("colors"), dict):
+                try:
+                    send({"colors": theme["colors"], "properties": theme.get("properties") or {}})
+                except (BrokenPipeError, OSError):
+                    os._exit(0)
+                last = now
+        time.sleep(0.5)
+
+
+if __name__ == "__main__":
+    main()

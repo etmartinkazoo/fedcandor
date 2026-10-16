@@ -6,7 +6,8 @@
     fedcandor-theme set NAME             switch theme (applies live)
     fedcandor-theme next | prev          cycle through themes
     fedcandor-theme refresh              re-render the current theme
-    fedcandor-theme bg-next              next wallpaper of the current theme
+    fedcandor-theme bg-next | bg-prev    cycle the current theme's wallpapers
+    fedcandor-theme bg-set N             use the current theme's Nth wallpaper (from 0)
     fedcandor-theme wallpaper PATH       use your own wallpaper for every theme
     fedcandor-theme wallpaper --clear    go back to the theme's wallpapers
     fedcandor-theme install SOURCE       omarchy:NAME, a git URL, or a local folder
@@ -313,13 +314,10 @@ def icon_theme_installed(name):
 
 def apply_gtk(d, c):
     dark = c["mode"] == "dark"
-    wanted = []
-    try:
-        wanted.append((d / "icons.theme").read_text().strip())
-    except OSError:
-        pass
-    wanted += ["Tela-dark" if dark else "Tela-light", "Tela", "Adwaita"]
-    icons = next((w for w in wanted if w and re.match(r"^[\w.-]+$", w) and icon_theme_installed(w)), "Adwaita")
+    # fedcandor uses Tela everywhere; a theme's icons.theme (Omarchy's Yaru
+    # choices) is ignored so icons stay consistent across themes.
+    wanted = ["Tela-dark" if dark else "Tela-light", "Tela", "Adwaita"]
+    icons = next((w for w in wanted if icon_theme_installed(w)), "Adwaita")
     for key, value in (("color-scheme", "prefer-dark" if dark else "prefer-light"), ("icon-theme", icons)):
         subprocess.run(["gsettings", "set", "org.gnome.desktop.interface", key, value], capture_output=True)
     ini = (f"[Settings]\ngtk-application-prefer-dark-theme={1 if dark else 0}\n"
@@ -328,31 +326,64 @@ def apply_gtk(d, c):
         write(XDG_CONFIG / version / "settings.ini", ini)
 
 
-FIREFOX_PREFS = """user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);
-user_pref("browser.theme.content-theme", 2);
-user_pref("browser.theme.toolbar-theme", 2);
-"""
+# Firefox prefs fedcandor owns, kept in a marked block in each profile's user.js.
+# The fedcandor Theme extension (steps/25-firefox.sh) applies the palette live and
+# sets the light/dark scheme for the browser and for web pages; these prefs make
+# Firefox defer to it instead of forcing one.
+FIREFOX_BLOCK_START = "// >>> fedcandor-theme >>>"
+FIREFOX_BLOCK_END = "// <<< fedcandor-theme <<<"
+FIREFOX_PREFS = {
+    "toolkit.legacyUserProfileCustomizations.stylesheets": "true",
+    "browser.theme.toolbar-theme": "2",                      # follow the active theme
+    "browser.theme.content-theme": "2",
+    "layout.css.prefers-color-scheme.content-override": "3",  # pages follow the browser theme
+}
+FIREFOX_PREF_LINE = re.compile(r'^\s*user_pref\(\s*"([^"]+)"')
 
 
-def apply_firefox(rendered):
-    ext = XDG_CONFIG / "quickshell/firefox-theme"
-    if "firefox-theme.json" in rendered and (ext / "manifest.json").exists():
-        write(ext / "theme.json", rendered["firefox-theme.json"])
-    if "userChrome.css" not in rendered:
-        return
+def firefox_user_js(existing, mode):
+    """Drop fedcandor's old block and any other line setting the prefs it owns,
+    then append a fresh block."""
+    prefs = dict(FIREFOX_PREFS)
+    # A theme set before this extension forced dark; keep it in line with the theme.
+    prefs["ui.systemUsesDarkTheme"] = "1" if mode == "dark" else "0"
+    out, skipping = [], False
+    for line in existing.splitlines():
+        if line.strip() == FIREFOX_BLOCK_START:
+            skipping = True
+        elif line.strip() == FIREFOX_BLOCK_END:
+            skipping = False
+        elif not skipping:
+            m = FIREFOX_PREF_LINE.match(line)
+            if not (m and m.group(1) in prefs):
+                out.append(line)
+    while out and not out[-1].strip():
+        out.pop()
+    while out and not out[0].strip():
+        out.pop(0)
+    block = [FIREFOX_BLOCK_START] + [f'user_pref("{k}", {v});' for k, v in prefs.items()] + [FIREFOX_BLOCK_END]
+    return "\n".join(out + ([""] if out else []) + block) + "\n"
+
+
+def firefox_profiles():
     for ff in (XDG_CONFIG / "mozilla/firefox", HOME / ".mozilla/firefox"):
-        if not ff.is_dir():
-            continue
-        for profile in ff.glob("*.default*"):
-            if not profile.is_dir():
-                continue
+        if ff.is_dir():
+            return [p for p in ff.glob("*.default*") if p.is_dir()]
+    return []
+
+
+def apply_firefox(rendered, c):
+    """Colors reach Firefox live through the extension, which reads
+    rendered/firefox-theme.json; here we only keep each profile's prefs and
+    shape-only userChrome.css in place (both read at Firefox startup)."""
+    for profile in firefox_profiles():
+        if "userChrome.css" in rendered:
             write(profile / "chrome/userChrome.css", rendered["userChrome.css"])
-            user_js = profile / "user.js"
-            existing = user_js.read_text() if user_js.exists() else ""
-            if "toolkit.legacyUserProfileCustomizations.stylesheets" not in existing:
-                with open(user_js, "a") as fh:
-                    fh.write(FIREFOX_PREFS)
-        break
+        user_js = profile / "user.js"
+        existing = user_js.read_text() if user_js.exists() else ""
+        updated = firefox_user_js(existing, c["mode"])
+        if updated != existing:
+            write(user_js, updated)
 
 
 def wallpaper_for(name, d):
@@ -405,7 +436,7 @@ def apply(name):
         neovim_live()
 
     apply_gtk(d, c)
-    apply_firefox(rendered)
+    apply_firefox(rendered, c)
     write(STATE / "current", name + "\n")
 
 
@@ -441,8 +472,6 @@ def install(source, name=None):
             shutil.rmtree(dest)
         dest.mkdir(parents=True)
         shutil.copy2(src / "colors.toml", dest / "colors.toml")
-        if (src / "icons.theme").is_file():
-            shutil.copy2(src / "icons.theme", dest / "icons.theme")
         if (src / "light.mode").exists():
             (dest / "light.mode").touch()
         copied = 0
@@ -489,6 +518,9 @@ def main():
     sub.add_parser("prev")
     sub.add_parser("refresh")
     sub.add_parser("bg-next")
+    sub.add_parser("bg-prev")
+    b = sub.add_parser("bg-set")
+    b.add_argument("index", type=int)
     w = sub.add_parser("wallpaper")
     w.add_argument("path", nargs="?")
     w.add_argument("--clear", action="store_true")
@@ -512,6 +544,7 @@ def main():
                 out.append({
                     "name": n, "source": source, "current": n == cur, "mode": c["mode"],
                     "preview": str(bgs[0]) if bgs else "",
+                    "backgrounds": [str(bg) for bg in bgs],
                     "colors": {k: c[k] for k in ("background", "dark_background", "foreground", "accent",
                                                  "red", "yellow", "green", "blue", "magenta", "cyan")},
                 })
@@ -531,12 +564,17 @@ def main():
         apply(names[(idx + (1 if a.cmd == "next" else -1)) % len(names)])
     elif a.cmd == "refresh":
         apply(current())
-    elif a.cmd == "bg-next":
+    elif a.cmd in ("bg-next", "bg-prev", "bg-set"):
         name = current()
         bgs = backgrounds(theme_dir(name))
         if bgs:
             state = load_json(STATE / "backgrounds.json")
-            state[name] = (state.get(name, 0) + 1) % len(bgs)
+            if a.cmd == "bg-set":
+                if not 0 <= a.index < len(bgs):
+                    die(f"'{name}' has {len(bgs)} wallpaper{'s' if len(bgs) != 1 else ''} (0-{len(bgs) - 1})")
+                state[name] = a.index
+            else:
+                state[name] = (state.get(name, 0) + (1 if a.cmd == "bg-next" else -1)) % len(bgs)
             write(STATE / "backgrounds.json", json.dumps(state) + "\n")
         apply(name)
     elif a.cmd == "wallpaper":

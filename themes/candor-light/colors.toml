@@ -1,0 +1,32 @@
+# candor-light: candor for daytime. Cool paper white, clear blue accent.
+mode = "light"
+
+accent = "#2f6bd8"
+selection = "#c9d9f5"
+muted = "#9fb0cc"
+
+background = "#f4f7fc"
+dark_background = "#e8eef8"
+darker_background = "#dbe3f2"
+lighter_background = "#e3eaf6"
+
+foreground = "#1a2638"
+dark_foreground = "#6b7d9a"
+light_foreground = "#33435c"
+bright_foreground = "#0d1420"
+
+red = "#d1453b"
+yellow = "#a8790a"
+orange = "#c4621a"
+green = "#23894f"
+cyan = "#158a94"
+blue = "#2f6bd8"
+magenta = "#7c55c9"
+brown = "#7a4e2d"
+
+bright_red = "#e0645a"
+bright_yellow = "#c08f17"
+bright_green = "#34a263"
+bright_cyan = "#22a3ad"
+bright_blue = "#4f86ea"
+bright_magenta = "#9570dc"

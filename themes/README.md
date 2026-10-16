@@ -7,7 +7,6 @@ A fedcandor theme is a folder with:
   colors.toml        the palette (required)
   backgrounds/       wallpapers, cycled in order (optional; without them the shell
                      draws a generated wallpaper from the palette)
-  icons.theme        an icon theme name, used if installed (optional)
 ```
 
 `colors.toml` uses the same format as [Omarchy](https://github.com/omacom/omarchy), so Omarchy
@@ -32,7 +31,8 @@ following Omarchy's rules, so minimal and older themes work too.
 
 ## Templates
 
-Built-in templates cover Quickshell, sway, kitty, foot, Neovim, GTK and Firefox.
+Built-in templates cover Quickshell, sway, kitty, foot, Neovim, GTK and Firefox, plus a
+resolved `colors.toml` that terminal apps such as tern read.
 `fedcandor-theme set` renders every file in `templates/` (overridable per user in
 `~/.config/fedcandor/templates/`) with the palette:
 
@@ -46,7 +46,7 @@ Built-in templates cover Quickshell, sway, kitty, foot, Neovim, GTK and Firefox.
 
 ## Credits and licenses
 
-- **candor** and **graphite** are original to fedcandor.
+- **candor**, **candor-light**, **graphite** and **graphite-light** are original to fedcandor.
 - **tokyo-night**, **catppuccin** and **flexoki-light** palettes and wallpapers come from
   [Omarchy](https://github.com/omacom/omarchy) (MIT License, © David Heinemeier Hansson and
   contributors). The underlying color schemes are

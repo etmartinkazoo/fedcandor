@@ -25,6 +25,7 @@ Then log out, and log into the **Sway** session.
 |------|---------|--------------|
 | `system-packages` | sudo | Installs everything in `packages/fedora.txt` with dnf. |
 | `system-security` | sudo | Enables automatic **security** updates, closes ssh in the firewall if sshd isn't enabled, and reports SELinux, Secure Boot and disk encryption status. |
+| `firefox` | sudo | Installs the fedcandor Theme extension system-wide, the one place Fedora's Firefox runs an unsigned add-on, so Firefox follows theme switches live. |
 | `fonts` | user | Installs 0xProto Nerd Font from its GitHub release, at a pinned version with a verified SHA-256 checksum. |
 | `icons` | user | Installs the Tela icon theme from its GitHub release, at a pinned version with a verified checksum. |
 | `dotfiles` | user | Links the configuration into your home directory with GNU stow. Anything in the way is moved to `~/.local/state/fedcandor/backup-*`. |
